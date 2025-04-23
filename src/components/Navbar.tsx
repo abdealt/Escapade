@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FcGoogle } from "react-icons/fc"; // Import Google icon
+import { FcGoogle } from "react-icons/fc"; 
 import { Link } from "react-router";
 import { useAuth } from "../context/AuthContext";
 
@@ -54,19 +54,18 @@ export const Navbar = () => {
                 <span className="text-gray-300">{displayName}</span>
                 <button
                   onClick={signOut}
-                  className="hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
+                  className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition-colors"
                 >
                   Déconnexion
                 </button>
               </div>
             ) : (
-              <button
-                onClick={signInWithGoogle}
-                className="flex items-center space-x-2 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+              <Link 
+                to="/login" 
+                className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition-colors"
               >
-                <FcGoogle className="text-2xl" /> {/* Google icon */}
-                <span>Connexion</span>
-              </button>
+                Connexion
+              </Link>
             )}
           </div>
 
@@ -104,6 +103,37 @@ export const Navbar = () => {
           <Link to="/comments" className="block text-gray-300 hover:text-white transition-colors duration-200">
             Mes commentaires
           </Link>
+          
+          {/* User auth for mobile */}
+          {user ? (
+            <div className="pt-2 border-t border-gray-700">
+              <div className="flex items-center space-x-2 mb-2">
+                {user.user_metadata.avatar_url && (
+                  <img
+                    src={user.user_metadata.avatar_url}
+                    alt="Avatar"
+                    className="w-6 h-6 rounded-full border border-gray-700"
+                  />
+                )}
+                <span className="text-gray-300 text-sm">{displayName}</span>
+              </div>
+              <button
+                onClick={signOut}
+                className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded text-sm"
+              >
+                Déconnexion
+              </button>
+            </div>
+          ) : (
+            <div className="pt-2 border-t border-gray-700">
+              <Link 
+                to="/login"
+                className="block w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded text-center text-sm"
+              >
+                Connexion
+              </Link>
+            </div>
+          )}
         </div>
       )}
     </nav>

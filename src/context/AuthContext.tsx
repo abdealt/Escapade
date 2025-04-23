@@ -1,3 +1,4 @@
+// src/context/AuthContext.tsx
 import { User } from '@supabase/supabase-js';
 import { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '../supabase-client';
@@ -5,41 +6,87 @@ import { supabase } from '../supabase-client';
 interface AuthContextType {
   user: User | null;
   signInWithGoogle: () => void;
+  signInWithEmail: (email: string, password: string) => Promise<void>;
+  signUpWithEmail: (email: string, password: string) => Promise<void>;
   signOut: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-
     const [user, setUser] = useState<User | null>(null)
 
     useEffect(()=> {
+        // Récupération de la session initiale
         supabase.auth.getSession().then(({data : {session}})=> {
             setUser(session?.user ?? null)
+            
+            // Si un utilisateur vient de se connecter via OAuth, rediriger vers la page mémorisée
+            if (session?.user && window.location.href.includes('access_token')) {
+                const redirectPath = localStorage.getItem('redirectAfterLogin') || '/';
+                localStorage.removeItem('redirectAfterLogin'); // Nettoyer après utilisation
+                window.location.href = redirectPath;
+            }
         });
 
-        const {data: listerner} = supabase.auth.onAuthStateChange((_, session) => {
+        // Écouter les changements d'état d'authentification
+        const {data: listener} = supabase.auth.onAuthStateChange((event, session) => {
             setUser(session?.user ?? null)
+            
+            // Si un utilisateur vient de se connecter, rediriger si nécessaire
+            if (event === 'SIGNED_IN' && session?.user) {
+                const redirectPath = localStorage.getItem('redirectAfterLogin');
+                if (redirectPath) {
+                    localStorage.removeItem('redirectAfterLogin');
+                    window.location.href = redirectPath;
+                }
+            }
         })
 
         return () => {
-            listerner?.subscription.unsubscribe()
+            listener?.subscription.unsubscribe()
         }
     }, []);
 
     const signInWithGoogle = () => {
         supabase.auth.signInWithOAuth({
             provider:'google',
-        })
+        });
+    }
+
+    const signInWithEmail = async (email: string, password: string) => {
+        const { error } = await supabase.auth.signInWithPassword({
+            email,
+            password
+        });
+        
+        if (error) throw error;
+    }
+
+    const signUpWithEmail = async (email: string, password: string) => {
+        const { error } = await supabase.auth.signUp({
+            email,
+            password
+        });
+        
+        if (error) throw error;
     }
 
     const signOut = () => {
         supabase.auth.signOut();
     }
 
-
-    return <AuthContext.Provider value={{user, signInWithGoogle, signOut}}>{children}</AuthContext.Provider>
+    return (
+        <AuthContext.Provider value={{
+            user, 
+            signInWithGoogle, 
+            signInWithEmail,
+            signUpWithEmail,
+            signOut
+        }}>
+            {children}
+        </AuthContext.Provider>
+    );
 }
 
 export const useAuth = (): AuthContextType => {

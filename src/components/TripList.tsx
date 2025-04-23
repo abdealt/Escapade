@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "../supabase-client";
 import { TripItem } from "./TripItem";
+import { useEffect, useState } from "react";
 
 // Trip model
 export interface Trip {
@@ -13,11 +14,13 @@ export interface Trip {
     created_at: Date;
 }
 
-const fetchTrips = async (): Promise<Trip[]> => {
+const fetchTrips = async (userId: string): Promise<Trip[]> => {
     const { data, error } = await supabase
         .from("trips")
         .select("*")
-        .order("created_at", { ascending: false });
+        .eq("created_by", userId)
+        .order("created_at", { ascending: false })
+        
     if (error) {
         throw new Error(error.message);
     }
@@ -25,10 +28,21 @@ const fetchTrips = async (): Promise<Trip[]> => {
 }
 
 export const TripList = () => {
-    const {data, error, isLoading} = useQuery<Trip[], Error>({
-        queryKey: ["trips"],
-        queryFn: fetchTrips,
-    })
+    const [userId, setUserId] = useState<string | null>(null);
+
+    useEffect(() => {
+        const getUser = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) setUserId(user.id);
+        };
+        getUser();
+    }, []);
+
+    const { data, error, isLoading } = useQuery<Trip[], Error>({
+        queryKey: ["trips", userId],
+        queryFn: () => fetchTrips(userId!),
+        enabled: !!userId, // n'exécute la requête que si userId est défini
+    });
 
     if (isLoading) {
         return <div>Loading...</div>;
@@ -37,13 +51,11 @@ export const TripList = () => {
         return <div>Error: {error.message}</div>;
     }
 
-    console.log(data)
-
     return (
         <div>
-            {data?.map((trip, key)=>(
-                <TripItem trip={trip} key={key}/>
+            {data?.map((trip) => (
+                <TripItem trip={trip} key={trip.id} />
             ))}
         </div>
-    )
-}
+    );
+};
