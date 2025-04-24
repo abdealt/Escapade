@@ -5,6 +5,7 @@ import { ProtectedRoute } from './context/ProtectedRoute';
 import { CreateTripPage } from './pages/CreateTrip';
 import { Home } from './pages/Home';
 import { Login } from './pages/Login';
+import { TripDetails } from './pages/TripDetails';
 
 function App() {
   return (
@@ -32,6 +33,11 @@ function App() {
           <Route path="/create-trip" element={
             <ProtectedRoute>
               <CreateTripPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/trip/:tripId" element={
+            <ProtectedRoute>
+              <TripDetails />
             </ProtectedRoute>
           } />
 
