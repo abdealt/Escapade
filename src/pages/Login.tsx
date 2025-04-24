@@ -1,8 +1,8 @@
 // src/pages/Login.tsx
 import { useState } from "react";
 import { FcGoogle } from "react-icons/fc";
+import { Navigate, useLocation } from "react-router";
 import { useAuth } from "../context/AuthContext";
-import { Navigate, useLocation, useNavigate } from "react-router";
 
 interface LocationState {
   from?: string;
@@ -19,7 +19,6 @@ export const Login = () => {
 
   const { user, signInWithGoogle, signInWithEmail, signUpWithEmail } = useAuth();
   const location = useLocation();
-  const navigate = useNavigate();
   
   // Récupérer le chemin de redirection, s'il existe
   const from = (location.state as LocationState)?.from || "/";

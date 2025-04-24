@@ -4,7 +4,7 @@ import { useAuth } from "../context/AuthContext";
 
 export const Navbar = () => {
   const [menuOpen, setMenuOpen] = useState(false);
-  const { signInWithGoogle, signOut, user } = useAuth();
+  const { signOut, user } = useAuth();
 
   const displayName = user?.user_metadata.full_name || user?.email || "Utilisateur";
 

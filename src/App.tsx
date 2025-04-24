@@ -1,7 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router';
 import { Navbar } from './components/Navbar';
-import { ProtectedRoute } from './components/ProtectedRoute';
 import { TripList } from './components/TripList';
+import { ProtectedRoute } from './context/ProtectedRoute';
 import { CreateTripPage } from './pages/CreateTrip';
 import { Home } from './pages/Home';
 import { Login } from './pages/Login';
