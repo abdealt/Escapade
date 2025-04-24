@@ -52,7 +52,12 @@ export const TripList = () => {
     }
 
     return (
+
         <div>
+            {data?.length === 0 && (
+                <div className="text-center text-gray-500">Aucun voyage trouvé.</div>
+            )}
+            
             {data?.map((trip) => (
                 <TripItem trip={trip} key={trip.id} />
             ))}
