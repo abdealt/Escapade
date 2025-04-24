@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { FcGoogle } from "react-icons/fc"; 
 import { Link } from "react-router";
 import { useAuth } from "../context/AuthContext";
 
@@ -23,7 +22,7 @@ export const Navbar = () => {
             <Link to="/" className="hover:text-white transition-colors duration-200">
               Accueil
             </Link>
-            <Link to="/trips" className="hover:text-white transition-colors duration-200">
+            <Link to="/my-trips" className="hover:text-white transition-colors duration-200">
               Mes voyages
             </Link>
             <Link to="/destinations" className="hover:text-white transition-colors duration-200">
@@ -88,7 +87,7 @@ export const Navbar = () => {
           <Link to="/" className="block text-gray-300 hover:text-white transition-colors duration-200">
             Accueil
           </Link>
-          <Link to="/trips" className="block text-gray-300 hover:text-white transition-colors duration-200">
+          <Link to="/my-trips" className="block text-gray-300 hover:text-white transition-colors duration-200">
             Mes voyages
           </Link>
           <Link to="/destinations" className="block text-gray-300 hover:text-white transition-colors duration-200">

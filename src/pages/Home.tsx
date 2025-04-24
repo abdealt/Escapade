@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router";
 import { CreateTrip } from "../components/CreateTripForm";
 
 export const Home = () => {
@@ -14,12 +15,21 @@ export const Home = () => {
         {/* Card: Mes voyages */}
         <div className="bg-gray-800 rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
           <h2 className="text-xl font-semibold text-white">Mes voyages</h2>
+          <Link to="/my-trips" className="text-blue-500 hover:underline cursor-pointer bg-transparent border-none p-0">
+            Voir mes voyages
+          </Link>
           <button 
             onClick={openModal}
             className="text-blue-500 hover:underline cursor-pointer bg-transparent border-none p-0"
           >
             Créer un nouveau voyage
           </button>
+        </div>
+
+        {/* Les Voyages en compagnie */}
+        <div className="bg-gray-800 rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
+          <h2 className="text-xl font-semibold text-white">Les voyages en compagnie</h2>
+          
         </div>
 
         {/* Autres cards... */}

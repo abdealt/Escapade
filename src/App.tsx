@@ -1,10 +1,10 @@
 import { Navigate, Route, Routes } from 'react-router';
 import { Navbar } from './components/Navbar';
+import { ProtectedRoute } from './components/ProtectedRoute';
 import { TripList } from './components/TripList';
+import { CreateTripPage } from './pages/CreateTrip';
 import { Home } from './pages/Home';
 import { Login } from './pages/Login';
-import { ProtectedRoute } from './components/ProtectedRoute';
-import { CreateTripPage } from './pages/CreateTrip';
 
 function App() {
   return (
@@ -24,7 +24,7 @@ function App() {
               <Home />
             </ProtectedRoute>
           } />
-          <Route path="/trips" element={
+          <Route path="/my-trips" element={
             <ProtectedRoute>
               <TripList />
             </ProtectedRoute>
