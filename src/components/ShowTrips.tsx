@@ -27,7 +27,7 @@ const fetchTrips = async (userId: string): Promise<Trip[]> => {
     return data as Trip[];
 }
 
-export const TripList = () => {
+export const ShowTrips = () => {
     const [userId, setUserId] = useState<string | null>(null);
 
     useEffect(() => {
@@ -52,7 +52,6 @@ export const TripList = () => {
     }
 
     return (
-
         <div>
             {data?.length === 0 && (
                 <div className="text-center text-gray-500">Aucun voyage trouvé.</div>

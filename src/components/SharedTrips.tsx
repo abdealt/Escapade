@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { TripItem } from "../pages/TripItem";
 import { supabase } from "../supabase-client";
-import { Trip } from "./TripList";
+import { Trip } from "./ShowTrips";
 
 // Fonction pour récupérer les voyages partagés avec l'utilisateur
 const fetchSharedTrips = async (userId: string): Promise<Trip[]> => {

@@ -3,7 +3,7 @@ import { FaChevronDown, FaChevronUp, FaEye, FaPlus } from "react-icons/fa";
 import { Link } from "react-router";
 import { CreateTrip } from "../components/CreateTripForm";
 import { SharedTrips } from "../components/SharedTrips";
-import { TripList } from "../components/TripList";
+import { ShowTrips } from "../components/ShowTrips";
 
 export const Home = () => {
   const [showTripModal, setShowTripModal] = useState(false);
@@ -37,7 +37,7 @@ export const Home = () => {
 
           {!collapseMine && (
             <div>
-              <TripList />
+              <ShowTrips />
             </div>
           )}
         </div>
@@ -61,7 +61,7 @@ export const Home = () => {
 
       {/* Modal */}
       {showTripModal && (
-        <div className="fixed inset-0 bg-white bg-opacity-50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-opacity-100 bg-bg-transparent flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-2xl font-bold text-gray-800">Créer un nouveau voyage</h2>

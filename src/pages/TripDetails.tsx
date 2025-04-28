@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { FaArrowLeft, FaEdit, FaTrash } from "react-icons/fa";
 import { FcInvite } from "react-icons/fc";
 import { Link, useNavigate, useParams } from "react-router";
-import { Trip } from "../components/TripList";
+import { Trip } from "../components/ShowTrips";
 import { supabase } from "../supabase-client";
 
 // Fonction pour récupérer les détails d'un voyage

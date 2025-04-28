@@ -1,6 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router';
 import { Navbar } from './components/Navbar';
-import { TripList } from './components/TripList';
+import { TripsList } from './components/TripsList.tsx';
 import { ProtectedRoute } from './context/ProtectedRoute';
 import { CreateTripPage } from './pages/CreateTrip';
 import { Home } from './pages/Home';
@@ -27,7 +27,7 @@ function App() {
           } />
           <Route path="/my-trips" element={
             <ProtectedRoute>
-              <TripList />
+              <TripsList />
             </ProtectedRoute>
           } />
           <Route path="/create-trip" element={
