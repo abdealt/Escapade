@@ -2,7 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { FaArrowLeft, FaEdit, FaTrash } from "react-icons/fa";
 import { FcInvite } from "react-icons/fc";
-import { Link, useNavigate, useParams } from "react-router";
+import { useNavigate, useParams } from "react-router";
+import { DestinationsList } from "../components/DestinationList";
 import { Trip } from "../components/ShowTrips";
 import { supabase } from "../supabase-client";
 
@@ -42,6 +43,7 @@ export const TripDetails = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [creatorEmail, setCreatorEmail] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'info' | 'destinations' | 'activities' | 'expenses' | 'notes'>('info');
 
   const { data: trip, error, isLoading } = useQuery<Trip | null, Error>({
     queryKey: ["trip", tripId],
@@ -51,7 +53,6 @@ export const TripDetails = () => {
 
   useEffect(() => {
     if (trip && trip.created_by) {
-      // Récupérer l'email de l'utilisateur qui a créé le voyage
       fetchUserById(trip.created_by).then(email => {
         setCreatorEmail(email);
       }).catch(err => console.error(err));
@@ -142,60 +143,124 @@ export const TripDetails = () => {
           </div>
         </div>
 
-        {/* Corps avec détails */}
-        <div className="p-6 space-y-4">
-          <div className="bg-gray-700 p-4 rounded-lg">
-            <h2 className="text-xl font-semibold mb-2">Description</h2>
-            <p className="text-gray-300">{trip.description || "Aucune description"}</p>
-          </div>
+        {/* Onglets de navigation */}
+        <div className="bg-gray-700 border-b border-gray-600">
+          <nav className="flex overflow-x-auto">
+            <button
+              onClick={() => setActiveTab('info')}
+              className={`py-3 px-4 font-medium border-b-2 ${
+                activeTab === 'info'
+                  ? 'border-blue-500 text-blue-300'
+                  : 'border-transparent text-gray-300 hover:text-white'
+              }`}
+            >
+              Informations
+            </button>
+            <button
+              onClick={() => setActiveTab('destinations')}
+              className={`py-3 px-4 font-medium border-b-2 ${
+                activeTab === 'destinations'
+                  ? 'border-blue-500 text-blue-300'
+                  : 'border-transparent text-gray-300 hover:text-white'
+              }`}
+            >
+              Destinations
+            </button>
+            <button
+              onClick={() => setActiveTab('activities')}
+              className={`py-3 px-4 font-medium border-b-2 ${
+                activeTab === 'activities'
+                  ? 'border-blue-500 text-blue-300'
+                  : 'border-transparent text-gray-300 hover:text-white'
+              }`}
+            >
+              Activités
+            </button>
+            <button
+              onClick={() => setActiveTab('expenses')}
+              className={`py-3 px-4 font-medium border-b-2 ${
+                activeTab === 'expenses'
+                  ? 'border-blue-500 text-blue-300'
+                  : 'border-transparent text-gray-300 hover:text-white'
+              }`}
+            >
+              Dépenses
+            </button>
+            <button
+              onClick={() => setActiveTab('notes')}
+              className={`py-3 px-4 font-medium border-b-2 ${
+                activeTab === 'notes'
+                  ? 'border-blue-500 text-blue-300'
+                  : 'border-transparent text-gray-300 hover:text-white'
+              }`}
+            >
+              Notes
+            </button>
+          </nav>
+        </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="bg-gray-700 p-4 rounded-lg">
-              <h2 className="text-xl font-semibold mb-2">Dates</h2>
-              <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Date de début:</span>
-                  <span className="text-white">{formatDate(trip.start_date)}</span>
+        {/* Contenu de l'onglet actif */}
+        <div className="p-6">
+          {activeTab === 'info' && (
+            <div className="space-y-6">
+              <div className="bg-gray-700 p-4 rounded-lg">
+                <h2 className="text-xl font-semibold mb-2">Description</h2>
+                <p className="text-gray-300">{trip.description || "Aucune description"}</p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-gray-700 p-4 rounded-lg">
+                  <h2 className="text-xl font-semibold mb-2">Dates</h2>
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Date de début:</span>
+                      <span className="text-white">{formatDate(trip.start_date)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Date de fin:</span>
+                      <span className="text-white">{formatDate(trip.end_date)}</span>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Date de fin:</span>
-                  <span className="text-white">{formatDate(trip.end_date)}</span>
+
+                <div className="bg-gray-700 p-4 rounded-lg">
+                  <h2 className="text-xl font-semibold mb-2">Info voyage</h2>
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Créé le:</span>
+                      <span className="text-white">{formatDate(trip.created_at)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Créateur du voyage:</span>
+                      <span className="text-white">{creatorEmail || "Chargement..."}</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
+          )}
 
-            <div className="bg-gray-700 p-4 rounded-lg">
-              <h2 className="text-xl font-semibold mb-2">Info voyage</h2>
-              <div className="space-y-2">
-                <div className="flex justify-between">
-                    <span className="text-gray-400">Créé le:</span>
-                    <span className="text-white">{formatDate(trip.created_at)}</span>
-                </div>
-                <div className="flex justify-between">
-                    <span className="text-gray-400">Créateur du voyage:</span>
-                    <span className="text-white">{creatorEmail || "Chargement..."}</span>
-                </div>
-              </div>
+          {activeTab === 'destinations' && tripId && (
+            <DestinationsList tripId={tripId} />
+          )}
+
+          {activeTab === 'activities' && (
+            <div className="text-center py-10 text-gray-400">
+              La fonctionnalité d'activités sera bientôt disponible.
             </div>
-          </div>
+          )}
 
-          {/* Sections pour future fonctionnalités */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Link to={`/trip/${tripId}/activities`} className="block bg-gray-700 p-4 rounded-lg hover:bg-gray-600 transition">
-              <h3 className="text-lg font-medium">Activités</h3>
-              <p className="text-gray-400 text-sm">Gérer les activités de ce voyage</p>
-            </Link>
-            
-            <Link to={`/trip/${tripId}/expenses`} className="block bg-gray-700 p-4 rounded-lg hover:bg-gray-600 transition">
-              <h3 className="text-lg font-medium">Dépenses</h3>
-              <p className="text-gray-400 text-sm">Suivre les dépenses du voyage</p>
-            </Link>
-            
-            <Link to={`/trip/${tripId}/notes`} className="block bg-gray-700 p-4 rounded-lg hover:bg-gray-600 transition">
-              <h3 className="text-lg font-medium">Notes</h3>
-              <p className="text-gray-400 text-sm">Ajouter des notes et commentaires</p>
-            </Link>
-          </div>
+          {activeTab === 'expenses' && (
+            <div className="text-center py-10 text-gray-400">
+              La fonctionnalité de dépenses sera bientôt disponible.
+            </div>
+          )}
+
+          {activeTab === 'notes' && (
+            <div className="text-center py-10 text-gray-400">
+              La fonctionnalité de notes sera bientôt disponible.
+            </div>
+          )}
         </div>
       </div>
 
