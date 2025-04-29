@@ -139,7 +139,7 @@ export const DestinationsList = ({ tripId }: DestinationsListProps) => {
                 <div>
                   <div className="flex items-center text-lg font-medium">
                     <MdLocationCity className="mr-2 text-blue-400" />
-                    {destination.city}, {destination.country}
+                    {destination.city}
                   </div>
                   <div className="flex items-center text-sm text-gray-300 mt-1">
                     <MdLocationOn className="mr-1 text-green-400" />
