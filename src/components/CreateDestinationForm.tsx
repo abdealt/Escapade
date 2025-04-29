@@ -7,7 +7,6 @@ export interface Destination {
   id: string;
   trip_id: string;
   city: string;
-  country: string;
   start_date: Date;
   end_date: Date;
 }
@@ -32,7 +31,6 @@ const updateDestination = async (destination: Destination) => {
     .from("destinations")
     .update({
       city: destination.city,
-      country: destination.country,
       start_date: destination.start_date,
       end_date: destination.end_date,
     })
@@ -49,7 +47,6 @@ export const DestinationForm = ({ tripId, onSuccess, onCancel, destination }: De
   const queryClient = useQueryClient();
   
   const [city, setCity] = useState(destination?.city || "");
-  const [country, setCountry] = useState(destination?.country || "");
   const [startDate, setStartDate] = useState<string>(
     destination?.start_date 
       ? new Date(destination.start_date).toISOString().split('T')[0]
@@ -82,7 +79,6 @@ export const DestinationForm = ({ tripId, onSuccess, onCancel, destination }: De
     
     const destinationData = {
       city,
-      country,
       start_date: new Date(startDate),
       end_date: new Date(endDate),
       trip_id: tripId,
@@ -100,7 +96,7 @@ export const DestinationForm = ({ tripId, onSuccess, onCancel, destination }: De
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols gap-4">
         <div>
           <label htmlFor="city" className="block text-sm font-medium text-gray-700">
             Ville
@@ -112,21 +108,6 @@ export const DestinationForm = ({ tripId, onSuccess, onCancel, destination }: De
             onChange={(e) => setCity(e.target.value)}
             className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm text-white"
             placeholder="Paris, New York, Tokyo..."
-            required
-          />
-        </div>
-
-        <div>
-          <label htmlFor="country" className="block text-sm font-medium text-gray-700">
-            Pays
-          </label>
-          <input
-            type="text"
-            id="country"
-            value={country}
-            onChange={(e) => setCountry(e.target.value)}
-            className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm text-white"
-            placeholder="France, États-Unis, Japon..."
             required
           />
         </div>

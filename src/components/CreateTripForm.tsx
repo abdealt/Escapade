@@ -1,13 +1,14 @@
 import { useMutation } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "../supabase-client";
 
-// Trip model
+// Trip model avec created_email
 interface Trip {
     name: string;
     description: string;
     start_date: Date;
     end_date: Date;
+    created_email: string;
 }
 
 interface CreateTripProps {
@@ -28,6 +29,19 @@ export const CreateTrip = ({ onSuccess }: CreateTripProps) => {
     const [tripDescription, setTripDescription] = useState<string>("");
     const [tripStartDate, setTripStartDate] = useState<Date>(new Date());
     const [tripEndDate, setTripEndDate] = useState<Date>(new Date());
+    const [userEmail, setUserEmail] = useState<string>("");
+
+    // Récupérer l'email de l'utilisateur connecté au chargement du composant
+    useEffect(() => {
+        const fetchUserEmail = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                setUserEmail(user.email || "");
+            }
+        };
+        
+        fetchUserEmail();
+    }, []);
 
     const { mutate } = useMutation({
         mutationFn: createTrip,
@@ -41,11 +55,19 @@ export const CreateTrip = ({ onSuccess }: CreateTripProps) => {
 
     const handleSubmit = (event: React.FormEvent) => {
         event.preventDefault();
+        
+        // Vérifier que l'email a bien été récupéré
+        if (!userEmail) {
+            alert("Impossible de récupérer votre email. Veuillez vous reconnecter.");
+            return;
+        }
+        
         mutate({
             name: tripName,
             description: tripDescription,
             start_date: tripStartDate,
             end_date: tripEndDate,
+            created_email: userEmail, // Ajouter l'email à l'objet trip
         });
     };
 

@@ -1,11 +1,22 @@
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { FaArrowLeft, FaEdit, FaTrash } from "react-icons/fa";
 import { FcInvite } from "react-icons/fc";
 import { useNavigate, useParams } from "react-router";
 import { DestinationsList } from "../components/DestinationList";
-import { Trip } from "../components/ShowTrips";
 import { supabase } from "../supabase-client";
+
+// Interface mise à jour avec created_email
+interface Trip {
+  id: string;
+  name: string;
+  description: string;
+  start_date: string;
+  end_date: string;
+  created_at: string;
+  created_email: string; // Utilisez directement ce champ au lieu de created_by + requête
+  // Autres propriétés de Trip si nécessaire
+}
 
 // Fonction pour récupérer les détails d'un voyage
 const fetchTripDetails = async (tripId: string): Promise<Trip | null> => {
@@ -22,27 +33,11 @@ const fetchTripDetails = async (tripId: string): Promise<Trip | null> => {
   return data as Trip;
 };
 
-// Fonction pour récupérer l'utilisateur par son ID
-const fetchUserById = async (userId: string) => {
-  const { data, error } = await supabase
-    .from("users")
-    .select("email")
-    .eq("id", userId)
-    .single();
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  return data?.email;
-};
-
 export const TripDetails = () => {
   const { tripId } = useParams<{ tripId: string }>();
   const navigate = useNavigate();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
-  const [creatorEmail, setCreatorEmail] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'info' | 'destinations' | 'activities' | 'expenses' | 'notes'>('info');
 
   const { data: trip, error, isLoading } = useQuery<Trip | null, Error>({
@@ -50,14 +45,6 @@ export const TripDetails = () => {
     queryFn: () => fetchTripDetails(tripId!),
     enabled: !!tripId
   });
-
-  useEffect(() => {
-    if (trip && trip.created_by) {
-      fetchUserById(trip.created_by).then(email => {
-        setCreatorEmail(email);
-      }).catch(err => console.error(err));
-    }
-  }, [trip]);
 
   if (isLoading) {
     return (
@@ -232,7 +219,7 @@ export const TripDetails = () => {
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-400">Créateur du voyage:</span>
-                      <span className="text-white">{creatorEmail || "Chargement..."}</span>
+                      <span className="text-white">{trip.created_email || "Non disponible"}</span>
                     </div>
                   </div>
                 </div>
