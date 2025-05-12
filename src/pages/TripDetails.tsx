@@ -4,7 +4,6 @@ import { FaArrowLeft, FaEdit, FaTrash } from "react-icons/fa";
 import { FcInvite } from "react-icons/fc";
 import { useNavigate, useParams } from "react-router";
 import { ActivitiesList } from "../components/ActivitiesList";
-import { CommentsList } from "../components/CommentsList";
 import { DestinationsList } from "../components/DestinationList";
 import { ExpensesList } from "../components/ExpensesList";
 import { supabase } from "../supabase-client";
@@ -242,9 +241,16 @@ export const TripDetails = () => {
             <ExpensesList tripId={tripId} />
           )}
 
-          {activeTab === 'notes' && tripId && (
-            <CommentsList tripId={tripId} />
+          {activeTab === 'notes' &&(
+            <div className="bg-gray-700 p-4 rounded-lg">
+              <h2 className="text-xl font-semibold mb-2">Notes</h2>
+              <p className="text-gray-300">Aucun commentaire pour le moment.</p>
+            </div>
           )}
+          {/* {activeTab === 'notes' && tripId && (
+            // <CommentsActivitiesList tripId={tripId} />
+            // <CommentsExpensesList tripId={tripId} />
+          )} */}
         </div>
       </div>
 
