@@ -3,7 +3,10 @@ import { useState } from "react";
 import { FaArrowLeft, FaEdit, FaTrash } from "react-icons/fa";
 import { FcInvite } from "react-icons/fc";
 import { useNavigate, useParams } from "react-router";
+import { ActivitiesList } from "../components/ActivitiesList";
+import { CommentsList } from "../components/CommentsList";
 import { DestinationsList } from "../components/DestinationList";
+import { ExpensesList } from "../components/ExpensesList";
 import { supabase } from "../supabase-client";
 
 // Interface mise à jour avec created_email
@@ -231,22 +234,16 @@ export const TripDetails = () => {
             <DestinationsList tripId={tripId} />
           )}
 
-          {activeTab === 'activities' && (
-            <div className="text-center py-10 text-gray-400">
-              La fonctionnalité d'activités sera bientôt disponible.
-            </div>
+          {activeTab === 'activities' && tripId && (
+            <ActivitiesList tripId={tripId} />
           )}
 
-          {activeTab === 'expenses' && (
-            <div className="text-center py-10 text-gray-400">
-              La fonctionnalité de dépenses sera bientôt disponible.
-            </div>
+          {activeTab === 'expenses' && tripId && (
+            <ExpensesList tripId={tripId} />
           )}
 
-          {activeTab === 'notes' && (
-            <div className="text-center py-10 text-gray-400">
-              La fonctionnalité de notes sera bientôt disponible.
-            </div>
+          {activeTab === 'notes' && tripId && (
+            <CommentsList tripId={tripId} />
           )}
         </div>
       </div>
