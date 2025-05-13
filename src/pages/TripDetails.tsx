@@ -4,11 +4,11 @@ import { FaArrowLeft, FaEdit, FaTrash } from "react-icons/fa";
 import { FcInvite } from "react-icons/fc";
 import { useNavigate, useParams } from "react-router";
 import { ActivitiesList } from "../components/ActivitiesList";
+import { CommentsActivitiesList } from "../components/CommentActivitiesList";
 import { DestinationsList } from "../components/DestinationList";
 import { ExpensesList } from "../components/ExpensesList";
 import { supabase } from "../supabase-client";
 
-// Interface mise à jour avec created_email
 interface Trip {
   id: string;
   name: string;
@@ -16,8 +16,7 @@ interface Trip {
   start_date: string;
   end_date: string;
   created_at: string;
-  created_email: string; // Utilisez directement ce champ au lieu de created_by + requête
-  // Autres propriétés de Trip si nécessaire
+  created_email: string;
 }
 
 // Fonction pour récupérer les détails d'un voyage
@@ -40,7 +39,7 @@ export const TripDetails = () => {
   const navigate = useNavigate();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
-  const [activeTab, setActiveTab] = useState<'info' | 'destinations' | 'activities' | 'expenses' | 'notes'>('info');
+  const [activeTab, setActiveTab] = useState<'info' | 'destinations' | 'activities' | 'expenses' | 'notes' | 'comments'>('info');
 
   const { data: trip, error, isLoading } = useQuery<Trip | null, Error>({
     queryKey: ["trip", tripId],
@@ -185,6 +184,16 @@ export const TripDetails = () => {
             >
               Notes
             </button>
+            <button
+              onClick={() => setActiveTab('comments')}
+              className={`py-3 px-4 font-medium border-b-2 ${
+                activeTab === 'comments'
+                  ? 'border-blue-500 text-blue-300'
+                  : 'border-transparent text-gray-300 hover:text-white'
+              }`}
+            >
+              Commentaires
+            </button>
           </nav>
         </div>
 
@@ -241,16 +250,21 @@ export const TripDetails = () => {
             <ExpensesList tripId={tripId} />
           )}
 
-          {activeTab === 'notes' &&(
+          {activeTab === 'notes' && (
             <div className="bg-gray-700 p-4 rounded-lg">
               <h2 className="text-xl font-semibold mb-2">Notes</h2>
               <p className="text-gray-300">Aucun commentaire pour le moment.</p>
             </div>
           )}
-          {/* {activeTab === 'notes' && tripId && (
-            // <CommentsActivitiesList tripId={tripId} />
-            // <CommentsExpensesList tripId={tripId} />
-          )} */}
+          
+          {activeTab === 'comments' && tripId && (
+            <div className="space-y-6">
+              <div className="bg-gray-700 p-4 rounded-lg">
+                <h2 className="text-xl font-semibold mb-4">Commentaires des activités</h2>
+                <CommentsActivitiesList tripId={tripId} />
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
