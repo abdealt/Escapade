@@ -5,6 +5,7 @@ import { FcInvite } from "react-icons/fc";
 import { useNavigate, useParams } from "react-router";
 import { ActivitiesList } from "../components/ActivitiesList";
 import { CommentsActivitiesList } from "../components/CommentActivitiesList";
+import { CommentExpensesList } from "../components/CommentExpensesList";
 import { DestinationsList } from "../components/DestinationList";
 import { ExpensesList } from "../components/ExpensesList";
 import { supabase } from "../supabase-client";
@@ -249,19 +250,21 @@ export const TripDetails = () => {
           {activeTab === 'expenses' && tripId && (
             <ExpensesList tripId={tripId} />
           )}
-
-          {activeTab === 'notes' && (
-            <div className="bg-gray-700 p-4 rounded-lg">
-              <h2 className="text-xl font-semibold mb-2">Notes</h2>
-              <p className="text-gray-300">Aucun commentaire pour le moment.</p>
-            </div>
-          )}
           
           {activeTab === 'comments' && tripId && (
             <div className="space-y-6">
               <div className="bg-gray-700 p-4 rounded-lg">
-                <h2 className="text-xl font-semibold mb-4">Commentaires des activités</h2>
-                <CommentsActivitiesList tripId={tripId} />
+                <h2 className="text-xl font-semibold mb-4">Commentaires</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <h3 className="text-lg font-medium mb-2">Activités</h3>
+                    <CommentsActivitiesList tripId={tripId} />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-medium mb-2">Dépenses</h3>
+                    <CommentExpensesList tripId={tripId} />
+                  </div>
+                </div>
               </div>
             </div>
           )}
