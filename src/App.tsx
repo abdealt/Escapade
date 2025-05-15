@@ -3,6 +3,7 @@ import { Navbar } from './components/Navbar';
 import { TripsList } from './components/TripsList.tsx';
 import { ProtectedRoute } from './context/ProtectedRoute';
 import { CreateTripPage } from './pages/CreateTrip';
+import { Friends } from './pages/Friends';
 import { Home } from './pages/Home';
 import { Login } from './pages/Login';
 import { TripDetails } from './pages/TripDetails';
@@ -38,6 +39,11 @@ function App() {
           <Route path="/trip/:tripId" element={
             <ProtectedRoute>
               <TripDetails />
+            </ProtectedRoute>
+          } />
+          <Route path="/friends" element={
+            <ProtectedRoute>
+              <Friends />
             </ProtectedRoute>
           } />
 
