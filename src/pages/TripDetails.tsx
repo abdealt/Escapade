@@ -102,6 +102,46 @@ export const TripDetails = () => {
     setFriends(friendsList);
   };
 
+  const handleShare = async (userId: string) => {
+    try {
+      // Vérifier si l'utilisateur est déjà participant
+      const { data: existingParticipant, error: checkError } = await supabase
+        .from('trip_participants')
+        .select('id')
+        .eq('trip_id', tripId)
+        .eq('user_id', userId)
+        .single();
+
+      if (checkError && checkError.code !== 'PGRST116') {
+        throw checkError;
+      }
+
+      if (existingParticipant) {
+        alert("Cette personne participe déjà à ce voyage.");
+        return;
+      }
+
+      // Ajouter le nouveau participant
+      const { error: insertError } = await supabase
+        .from('trip_participants')
+        .insert([
+          {
+            trip_id: tripId,
+            user_id: userId
+          }
+        ]);
+
+      if (insertError) throw insertError;
+
+      alert("Le voyage a été partagé avec succès !");
+      setShowShareModal(false);
+      setSelectedFriendId('');
+    } catch (error) {
+      console.error('Erreur lors du partage:', error);
+      alert("Une erreur est survenue lors du partage du voyage.");
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -381,12 +421,9 @@ export const TripDetails = () => {
                 Annuler
               </button>
               <button 
-                onClick={async () => {
+                onClick={() => {
                   if (selectedFriendId && tripId) {
-                    // TODO: Ajouter la logique pour partager le voyage
-                    console.log('Partage avec:', selectedFriendId);
-                    setShowShareModal(false);
-                    setSelectedFriendId('');
+                    handleShare(selectedFriendId);
                   }
                 }} 
                 className="px-4 py-2 bg-blue-600 rounded hover:bg-blue-700"
