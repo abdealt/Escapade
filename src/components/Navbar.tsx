@@ -37,6 +37,10 @@ export const Navbar = () => {
             <Link to="/comments" className="hover:text-white transition-colors duration-200">
               Mes commentaires
             </Link>
+
+            <Link to="/friends" className="hover:text-white transition-colors duration-200">
+              Mes amis
+            </Link>
           </div>
 
           {/* Right: User Display */}

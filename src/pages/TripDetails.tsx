@@ -20,6 +20,20 @@ interface Trip {
   created_email: string;
 }
 
+interface Friend {
+  id: string;
+  email: string;
+}
+
+interface FriendRequest {
+  id: string;
+  requester_id: string;
+  receiver_id: string;
+  status: string;
+  requester?: { id: string; email: string };
+  receiver?: { id: string; email: string };
+}
+
 // Fonction pour récupérer les détails d'un voyage
 const fetchTripDetails = async (tripId: string): Promise<Trip | null> => {
   const { data, error } = await supabase
@@ -40,6 +54,8 @@ export const TripDetails = () => {
   const navigate = useNavigate();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
+  const [friends, setFriends] = useState<Friend[]>([]);
+  const [selectedFriendId, setSelectedFriendId] = useState('');
   const [activeTab, setActiveTab] = useState<'info' | 'destinations' | 'activities' | 'expenses' | 'notes' | 'comments'>('info');
 
   const { data: trip, error, isLoading } = useQuery<Trip | null, Error>({
@@ -47,6 +63,44 @@ export const TripDetails = () => {
     queryFn: () => fetchTripDetails(tripId!),
     enabled: !!tripId
   });
+
+  const loadFriends = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data: friendRequests, error } = await supabase
+      .from('friend_requests')
+      .select(`
+        *,
+        requester:users!friend_requests_requester_id_fkey (
+          id,
+          email
+        ),
+        receiver:users!friend_requests_receiver_id_fkey (
+          id,
+          email
+        )
+      `)
+      .eq('status', 'accepted')
+      .or(`requester_id.eq.${user.id},receiver_id.eq.${user.id}`);
+
+    if (error) {
+      console.error('Erreur lors du chargement des amis:', error);
+      return;
+    }
+
+    // Transformer les demandes d'amis en liste d'amis
+    const friendsList = friendRequests.map((request: FriendRequest) => {
+      const isSender = request.requester_id === user.id;
+      const friendData = isSender ? request.receiver : request.requester;
+      return {
+        id: isSender ? request.receiver_id : request.requester_id,
+        email: friendData?.email || ''
+      };
+    });
+
+    setFriends(friendsList);
+  };
 
   if (isLoading) {
     return (
@@ -118,7 +172,10 @@ export const TripDetails = () => {
             <button 
               className="p-2 bg-green-500 rounded-full hover:bg-green-600 transition"
               title="Envoyer une invitation"
-              onClick={() => setShowShareModal(true)}
+              onClick={async () => {
+                await loadFriends();
+                setShowShareModal(true);
+              }}
             >
               <FcInvite className="text-white" />
             </button>
@@ -300,21 +357,40 @@ export const TripDetails = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-gray-800 p-6 rounded-lg max-w-md w-full">
             <h3 className="text-xl font-bold mb-4">Partager ce voyage</h3>
-            <p className="mb-4">Entrez l'email de la personne avec qui vous souhaitez partager ce voyage:</p>
-            <input 
-              type="email" 
+            <p className="mb-4">Sélectionnez l'ami avec qui vous souhaitez partager ce voyage :</p>
+            <select
+              value={selectedFriendId}
+              onChange={(e) => setSelectedFriendId(e.target.value)}
               className="w-full p-2 mb-4 bg-gray-700 border border-gray-600 rounded text-white"
-              placeholder="email@exemple.com"
-            />
+            >
+              <option value="">Sélectionner un ami</option>
+              {friends.map((friend) => (
+                <option key={friend.id} value={friend.id}>
+                  {friend.email}
+                </option>
+              ))}
+            </select>
             <div className="flex justify-end space-x-4">
               <button 
-                onClick={() => setShowShareModal(false)} 
+                onClick={() => {
+                  setShowShareModal(false);
+                  setSelectedFriendId('');
+                }} 
                 className="px-4 py-2 bg-gray-600 rounded hover:bg-gray-700"
               >
                 Annuler
               </button>
               <button 
+                onClick={async () => {
+                  if (selectedFriendId && tripId) {
+                    // TODO: Ajouter la logique pour partager le voyage
+                    console.log('Partage avec:', selectedFriendId);
+                    setShowShareModal(false);
+                    setSelectedFriendId('');
+                  }
+                }} 
                 className="px-4 py-2 bg-blue-600 rounded hover:bg-blue-700"
+                disabled={!selectedFriendId}
               >
                 Partager
               </button>
