@@ -1,3 +1,4 @@
+import { useQueryClient } from '@tanstack/react-query';
 import { useState } from "react";
 import { FaChevronDown, FaChevronUp, FaEye, FaPlus } from "react-icons/fa";
 import { Link } from "react-router";
@@ -9,9 +10,16 @@ export const Home = () => {
   const [showTripModal, setShowTripModal] = useState(false);
   const [collapseMine, setCollapseMine] = useState(false);
   const [collapseShared, setCollapseShared] = useState(false);
+  const queryClient = useQueryClient();
 
   const openModal = () => setShowTripModal(true);
-  const closeModal = () => setShowTripModal(false);
+  
+  const handleTripCreated = () => {
+    setShowTripModal(false);
+    // Invalider les requêtes pour forcer le rafraîchissement
+    queryClient.invalidateQueries({ queryKey: ['trips'] });
+    queryClient.invalidateQueries({ queryKey: ['shared-trips'] });
+  };
 
   return (
     <div className="min-h-screen text-gray-100 px-4 sm:px-6 lg:px-8">
@@ -65,11 +73,11 @@ export const Home = () => {
           <div className="bg-white rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-2xl font-bold text-gray-800">Créer un nouveau voyage</h2>
-              <button onClick={closeModal} className="text-gray-500 hover:text-gray-700 text-2xl font-bold">
+              <button onClick={() => setShowTripModal(false)} className="text-gray-500 hover:text-gray-700 text-2xl font-bold">
                 &times;
               </button>
             </div>
-            <CreateTrip onSuccess={closeModal} />
+            <CreateTrip onSuccess={handleTripCreated} />
           </div>
         </div>
       )}

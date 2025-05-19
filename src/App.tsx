@@ -6,6 +6,7 @@ import { CreateTripPage } from './pages/CreateTrip';
 import { Friends } from './pages/Friends';
 import { Home } from './pages/Home';
 import { Login } from './pages/Login';
+import { ProfilePage } from './pages/ProfilePage';
 import { TripDetails } from './pages/TripDetails';
 
 function App() {
@@ -44,6 +45,11 @@ function App() {
           <Route path="/friends" element={
             <ProtectedRoute>
               <Friends />
+            </ProtectedRoute>
+          } />
+          <Route path="/profile" element={
+            <ProtectedRoute>
+              <ProfilePage />
             </ProtectedRoute>
           } />
 

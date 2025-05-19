@@ -137,17 +137,17 @@ export const DestinationForm = ({ tripId, onSuccess, onCancel, destination }: De
     const tripEndTimestamp = new Date(trip.end_date).getTime();
     
     if (startTimestamp < tripStartTimestamp) {
-      setValidationError(`La date d'arrivée doit être après le début du voyage (${new Date(trip.start_date).toLocaleDateString()})`);
+      setValidationError(`La Date de fin doit être après le début du voyage (${new Date(trip.start_date).toLocaleDateString()})`);
       return false;
     }
     
     if (endTimestamp > tripEndTimestamp) {
-      setValidationError(`La date de départ doit être avant la fin du voyage (${new Date(trip.end_date).toLocaleDateString()})`);
+      setValidationError(`La date de début doit être avant la fin du voyage (${new Date(trip.end_date).toLocaleDateString()})`);
       return false;
     }
     
     if (startTimestamp > endTimestamp) {
-      setValidationError("La date d'arrivée doit être avant la date de départ");
+      setValidationError("La Date de début doit être avant la date de fin");
       return false;
     }
     
@@ -213,7 +213,7 @@ export const DestinationForm = ({ tripId, onSuccess, onCancel, destination }: De
 
         <div>
           <label htmlFor="startDate" className="block text-sm font-medium text-gray-400">
-            Date de départ
+            Date de début
           </label>
           <input
             type="date"
@@ -237,7 +237,7 @@ export const DestinationForm = ({ tripId, onSuccess, onCancel, destination }: De
 
         <div>
           <label htmlFor="endDate" className="block text-sm font-medium text-gray-400">
-            Date d'arrivée
+            Date de fin
           </label>
           <input
             type="date"

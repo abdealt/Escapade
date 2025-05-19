@@ -1,12 +1,29 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { useAuth } from "../context/AuthContext";
+import { supabase } from "../supabase-client";
 
 export const Navbar = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const { signOut, user } = useAuth();
+  const [displayName, setDisplayName] = useState<string>("Utilisateur");
 
-  const displayName = user?.user_metadata.full_name || user?.email || "Utilisateur";
+  useEffect(() => {
+    if (user) {
+      const fetchDisplayName = async () => {
+        const { data, error } = await supabase
+          .from('users')
+          .select('display_name')
+          .eq('id', user.id)
+          .single();
+
+        if (!error && data) {
+          setDisplayName(data.display_name || "Utilisateur");
+        }
+      };
+      fetchDisplayName();
+    }
+  }, [user]);
 
   return (
     <nav className="fixed top-0 z-50 w-full bg-gray-900/80 text-white backdrop-blur border-b border-gray-700 shadow-md">
@@ -47,14 +64,12 @@ export const Navbar = () => {
           <div className="hidden md:flex items-center space-x-4">
             {user ? (
               <div className="flex items-center space-x-4">
-                {user.user_metadata.avatar_url && (
-                  <img
-                    src={user.user_metadata.avatar_url}
-                    alt="Avatar"
-                    className="w-8 h-8 rounded-full border border-gray-700"
-                  />
-                )}
-                <span className="text-gray-300">{displayName}</span>
+                <Link 
+                  to="/profile"
+                  className="text-gray-300 hover:text-white transition-colors"
+                >
+                  {displayName}
+                </Link>
                 <button
                   onClick={signOut}
                   className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition-colors"
@@ -111,13 +126,6 @@ export const Navbar = () => {
           {user ? (
             <div className="pt-2 border-t border-gray-700">
               <div className="flex items-center space-x-2 mb-2">
-                {user.user_metadata.avatar_url && (
-                  <img
-                    src={user.user_metadata.avatar_url}
-                    alt="Avatar"
-                    className="w-6 h-6 rounded-full border border-gray-700"
-                  />
-                )}
                 <span className="text-gray-300 text-sm">{displayName}</span>
               </div>
               <button

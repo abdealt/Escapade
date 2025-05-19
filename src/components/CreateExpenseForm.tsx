@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
+import { useAuth } from "../context/AuthContext";
 import { supabase } from "../supabase-client";
 
 interface ExpenseFormProps {
@@ -20,6 +21,7 @@ interface Expense {
 
 export const ExpenseForm = ({ tripId, expenseId, onComplete }: ExpenseFormProps) => {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   // État initial du formulaire
   const [formData, setFormData] = useState({
@@ -61,6 +63,33 @@ export const ExpenseForm = ({ tripId, expenseId, onComplete }: ExpenseFormProps)
       });
     }
   }, [existingExpense]);
+
+  // Récupérer le display_name de l'utilisateur
+  const { data: userData } = useQuery({
+    queryKey: ["user-display-name", user?.id],
+    queryFn: async () => {
+      if (!user?.id) return null;
+      const { data, error } = await supabase
+        .from("users")
+        .select("display_name")
+        .eq("id", user.id)
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user?.id
+  });
+
+  // Mettre à jour user_paid_by avec le display_name
+  useEffect(() => {
+    if (userData?.display_name && !existingExpense) {
+      setFormData(prev => ({
+        ...prev,
+        user_paid_by: userData.display_name
+      }));
+    }
+  }, [userData, existingExpense]);
 
   // Gestion des changements dans le formulaire
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -213,15 +242,9 @@ export const ExpenseForm = ({ tripId, expenseId, onComplete }: ExpenseFormProps)
           id="user_paid_by"
           name="user_paid_by"
           value={formData.user_paid_by}
-          onChange={handleChange}
-          placeholder="Nom de la personne ayant payé"
-          className={`w-full p-2 bg-gray-800 border rounded ${
-            formErrors.user_paid_by ? "border-red-500" : "border-gray-600"
-          }`}
+          readOnly
+          className="w-full p-2 bg-gray-700 border rounded border-gray-600 cursor-not-allowed"
         />
-        {formErrors.user_paid_by && (
-          <p className="text-red-500 text-sm mt-1">{formErrors.user_paid_by}</p>
-        )}
       </div>
 
       {/* Date */}

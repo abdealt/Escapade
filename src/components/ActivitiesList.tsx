@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { FaEdit, FaPlus, FaTrash } from "react-icons/fa";
+import { useAuth } from "../context/AuthContext";
 import { supabase } from "../supabase-client";
 import { ActivityForm } from "./CreateActivityForm";
 
@@ -10,6 +11,7 @@ interface Activity {
   title: string;
   description: string;
   datetime: string;
+  email: string;
 }
 
 interface ActivitiesListProps {
@@ -53,7 +55,7 @@ const fetchDestinations = async (tripId: string) => {
     .from("destinations")
     .select("*")
     .eq("trip_id", tripId)
-    .order("name", { ascending: true });
+    .order("city", { ascending: true });
 
   if (error) {
     throw new Error(error.message);
@@ -63,6 +65,7 @@ const fetchDestinations = async (tripId: string) => {
 };
 
 export const ActivitiesList = ({ tripId }: ActivitiesListProps) => {
+  const { user } = useAuth();
   const [showForm, setShowForm] = useState(false);
   const [editActivity, setEditActivity] = useState<Activity | null>(null);
   const queryClient = useQueryClient();
@@ -96,8 +99,32 @@ export const ActivitiesList = ({ tripId }: ActivitiesListProps) => {
     }
   });
 
+  // Mutation pour modifier une activité
+  const updateActivityMutation = useMutation({
+    mutationFn: async (activity: Activity) => {
+      const { error } = await supabase
+        .from("activities")
+        .update({
+          ...activity,
+          email: user?.email // Ajouter l'email de l'utilisateur connecté
+        })
+        .eq("id", activity.id);
+      
+      if (error) {
+        throw new Error(error.message);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["activities", tripId] });
+    }
+  });
+
   // Gérer la modification d'une activité
   const handleEdit = (activity: Activity) => {
+    if (activity.email !== user?.email) {
+      alert("Vous ne pouvez modifier que vos propres activités.");
+      return;
+    }
     setEditActivity(activity);
     setShowForm(true);
   };
@@ -181,20 +208,24 @@ export const ActivitiesList = ({ tripId }: ActivitiesListProps) => {
                   <p className="text-gray-400 mt-2">{activity.description || "Aucune description"}</p>
                 </div>
                 <div className="flex space-x-2">
-                  <button
-                    onClick={() => handleEdit(activity)}
-                    className="p-2 bg-blue-500 rounded-full hover:bg-blue-600 transition"
-                    title="Modifier cette activité"
-                  >
-                    <FaEdit className="text-white" />
-                  </button>
-                  <button
-                    onClick={() => handleDelete(activity.id)}
-                    className="p-2 bg-red-500 rounded-full hover:bg-red-600 transition"
-                    title="Supprimer cette activité"
-                  >
-                    <FaTrash className="text-white" />
-                  </button>
+                  {activity.email === user?.email && (
+                    <>
+                      <button
+                        onClick={() => handleEdit(activity)}
+                        className="p-2 bg-blue-500 rounded-full hover:bg-blue-600 transition"
+                        title="Modifier cette activité"
+                      >
+                        <FaEdit className="text-white" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(activity.id)}
+                        className="p-2 bg-red-500 rounded-full hover:bg-red-600 transition"
+                        title="Supprimer cette activité"
+                      >
+                        <FaTrash className="text-white" />
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
             </div>

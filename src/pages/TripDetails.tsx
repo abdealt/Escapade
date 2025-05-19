@@ -8,6 +8,7 @@ import { CommentsActivitiesList } from "../components/CommentActivitiesList";
 import { CommentExpensesList } from "../components/CommentExpensesList";
 import { DestinationsList } from "../components/DestinationList";
 import { ExpensesList } from "../components/ExpensesList";
+import { ParticipantsList } from "../components/ParticipantsList";
 import { supabase } from "../supabase-client";
 
 interface Trip {
@@ -18,6 +19,9 @@ interface Trip {
   end_date: string;
   created_at: string;
   created_email: string;
+  creator: {
+    display_name: string;
+  }
 }
 
 interface Friend {
@@ -36,17 +40,30 @@ interface FriendRequest {
 
 // Fonction pour récupérer les détails d'un voyage
 const fetchTripDetails = async (tripId: string): Promise<Trip | null> => {
-  const { data, error } = await supabase
+  // Première requête pour obtenir les détails du voyage
+  const { data: tripData, error: tripError } = await supabase
     .from("trips")
-    .select("*")
+    .select('*')
     .eq("id", tripId)
     .single();
-  
-  if (error) {
-    throw new Error(error.message);
-  }
-  
-  return data as Trip;
+
+  if (tripError) throw tripError;
+  if (!tripData) return null;
+
+  // Deuxième requête pour obtenir les informations du créateur
+  const { data: userData, error: userError } = await supabase
+    .from("users")
+    .select('display_name')
+    .eq("id", tripData.created_by) // Utiliser created_by au lieu de created_at
+    .single();
+
+  if (userError) throw userError;
+
+  // Combiner les résultats
+  return {
+    ...tripData,
+    creator: userData || { display_name: tripData.created_email }
+  };
 };
 
 export const TripDetails = () => {
@@ -56,7 +73,7 @@ export const TripDetails = () => {
   const [showShareModal, setShowShareModal] = useState(false);
   const [friends, setFriends] = useState<Friend[]>([]);
   const [selectedFriendId, setSelectedFriendId] = useState('');
-  const [activeTab, setActiveTab] = useState<'info' | 'destinations' | 'activities' | 'expenses' | 'notes' | 'comments'>('info');
+  const [activeTab, setActiveTab] = useState<'info' | 'destinations' | 'activities' | 'expenses' | 'comments' | 'participants'>('info');
 
   const { data: trip, error, isLoading } = useQuery<Trip | null, Error>({
     queryKey: ["trip", tripId],
@@ -211,7 +228,7 @@ export const TripDetails = () => {
             </button>
             <button 
               className="p-2 bg-green-500 rounded-full hover:bg-green-600 transition"
-              title="Envoyer une invitation"
+              title="Ajouter un ami"
               onClick={async () => {
                 await loadFriends();
                 setShowShareModal(true);
@@ -273,16 +290,6 @@ export const TripDetails = () => {
               Dépenses
             </button>
             <button
-              onClick={() => setActiveTab('notes')}
-              className={`py-3 px-4 font-medium border-b-2 ${
-                activeTab === 'notes'
-                  ? 'border-blue-500 text-blue-300'
-                  : 'border-transparent text-gray-300 hover:text-white'
-              }`}
-            >
-              Notes
-            </button>
-            <button
               onClick={() => setActiveTab('comments')}
               className={`py-3 px-4 font-medium border-b-2 ${
                 activeTab === 'comments'
@@ -291,6 +298,16 @@ export const TripDetails = () => {
               }`}
             >
               Commentaires
+            </button>
+            <button
+              onClick={() => setActiveTab('participants')}
+              className={`py-3 px-4 font-medium border-b-2 ${
+                activeTab === 'participants'
+                  ? 'border-blue-500 text-blue-300'
+                  : 'border-transparent text-gray-300 hover:text-white'
+              }`}
+            >
+              Participants
             </button>
           </nav>
         </div>
@@ -328,7 +345,9 @@ export const TripDetails = () => {
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-400">Créateur du voyage:</span>
-                      <span className="text-white">{trip.created_email || "Non disponible"}</span>
+                      <span className="text-white">
+                        {trip.creator?.display_name || trip.created_email || "Non disponible"}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -367,6 +386,10 @@ export const TripDetails = () => {
           )}
         </div>
       </div>
+
+      {activeTab === 'participants' && tripId && (
+            <ParticipantsList tripId={tripId} />
+      )}
 
       {/* Modal de confirmation de suppression */}
       {showDeleteModal && (
