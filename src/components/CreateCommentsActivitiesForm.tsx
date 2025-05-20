@@ -37,11 +37,23 @@ export const CommentsActivitieForm = ({
   const fetchUserProfile = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
-      // Récupérer le nom complet de l'utilisateur
+      // D'abord, vérifions le display_name dans la table users
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('display_name')
+        .eq('id', user.id)
+        .single();
+
+      if (!userError && userData?.display_name) {
+        return userData.display_name;
+      }
+
+      // Si pas de display_name, on utilise le nom du provider
       if (user.user_metadata && user.user_metadata.full_name) {
         return user.user_metadata.full_name;
       }
-      // Si le nom complet n'est pas disponible, récupérer depuis la table profiles
+
+      // En dernier recours, on vérifie dans la table profiles
       const { data, error } = await supabase
         .from('profiles')
         .select('full_name')

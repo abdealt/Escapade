@@ -367,6 +367,10 @@ export const TripDetails = () => {
             <ExpensesList tripId={tripId} />
           )}
           
+          {activeTab === 'participants' && tripId && (
+            <ParticipantsList tripId={tripId} />
+          )}
+          
           {activeTab === 'comments' && tripId && (
             <div className="space-y-6">
               <div className="bg-gray-700 p-4 rounded-lg">
@@ -384,12 +388,11 @@ export const TripDetails = () => {
               </div>
             </div>
           )}
+          
         </div>
       </div>
 
-      {activeTab === 'participants' && tripId && (
-            <ParticipantsList tripId={tripId} />
-      )}
+      
 
       {/* Modal de confirmation de suppression */}
       {showDeleteModal && (
