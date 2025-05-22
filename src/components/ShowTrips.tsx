@@ -15,11 +15,14 @@ export interface Trip {
 }
 
 const fetchTrips = async (userId: string): Promise<Trip[]> => {
+    const today = new Date().toISOString();
     const { data, error } = await supabase
         .from("trips")
         .select("*")
         .eq("created_by", userId)
-        .order("created_at", { ascending: false })
+        .lte('start_date', today) // date de début inférieure ou égale à aujourd'hui
+        .gt('end_date', today)    // date de fin supérieure à aujourd'hui
+        .order('end_date', { ascending: true });  // trier par date de fin la plus proche
         
     if (error) {
         throw new Error(error.message);

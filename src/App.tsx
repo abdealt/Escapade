@@ -1,4 +1,5 @@
 import { Navigate, Route, Routes } from 'react-router';
+import { CommentsList } from './components/CommentsList.tsx';
 import { Navbar } from './components/Navbar';
 import { TripsList } from './components/TripsList.tsx';
 import { ProtectedRoute } from './context/ProtectedRoute';
@@ -45,6 +46,11 @@ function App() {
           <Route path="/friends" element={
             <ProtectedRoute>
               <Friends />
+            </ProtectedRoute>
+          } />
+          <Route path="/comments" element={
+            <ProtectedRoute>
+              <CommentsList />
             </ProtectedRoute>
           } />
           <Route path="/profile" element={

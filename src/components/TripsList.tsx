@@ -61,8 +61,7 @@ export const TripsList = () => {
         <div>
             <div className="flex justify-between mb-4">
                 <div>
-                    <h2 className="text-2xl text-gray-600 font-bold mb-4">Mes voyages</h2>
-                    <p className="text-gray-600 mb-4">Voici la liste de mes voyages.</p>
+                    <h2 className="text-2xl text-gray-600 font-bold mb-4">Liste de mes voyages</h2>
                 </div>
                 <div className="flex items-center space-x-2">
                     <button 

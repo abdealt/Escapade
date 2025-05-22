@@ -42,19 +42,12 @@ export const Navbar = () => {
             <Link to="/my-trips" className="hover:text-white transition-colors duration-200">
               Mes voyages
             </Link>
-            <Link to="/destinations" className="hover:text-white transition-colors duration-200">
-              Destinations
-            </Link>
-            <Link to="/activities" className="hover:text-white transition-colors duration-200">
-              Mes activités
-            </Link>
             <Link to="/expenses" className="hover:text-white transition-colors duration-200">
               Mes dépenses
             </Link>
             <Link to="/comments" className="hover:text-white transition-colors duration-200">
               Mes commentaires
             </Link>
-
             <Link to="/friends" className="hover:text-white transition-colors duration-200">
               Mes amis
             </Link>
@@ -109,17 +102,14 @@ export const Navbar = () => {
           <Link to="/my-trips" className="block text-gray-300 hover:text-white transition-colors duration-200">
             Mes voyages
           </Link>
-          <Link to="/destinations" className="block text-gray-300 hover:text-white transition-colors duration-200">
-            Destinations
-          </Link>
-          <Link to="/activities" className="block text-gray-300 hover:text-white transition-colors duration-200">
-            Mes activités
-          </Link>
           <Link to="/expenses" className="block text-gray-300 hover:text-white transition-colors duration-200">
             Mes dépenses
           </Link>
           <Link to="/comments" className="block text-gray-300 hover:text-white transition-colors duration-200">
             Mes commentaires
+          </Link>
+          <Link to="/friends" className="block text-gray-300 hover:text-white transition-colors duration-200">
+            Mes amis
           </Link>
           
           {/* User auth for mobile */}
