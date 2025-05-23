@@ -1,9 +1,10 @@
 import { Navigate, Route, Routes } from 'react-router';
-import { CommentsList } from './components/CommentsList.tsx';
 import { Navbar } from './components/Navbar';
 import { TripsList } from './components/TripsList.tsx';
 import { ProtectedRoute } from './context/ProtectedRoute';
+import { CommentsList } from './pages/CommentsPage.tsx';
 import { CreateTripPage } from './pages/CreateTrip';
+import { ExpensesPage } from './pages/ExpensesPage.tsx';
 import { Friends } from './pages/Friends';
 import { Home } from './pages/Home';
 import { Login } from './pages/Login';
@@ -46,6 +47,11 @@ function App() {
           <Route path="/friends" element={
             <ProtectedRoute>
               <Friends />
+            </ProtectedRoute>
+          } />
+          <Route path="/expenses" element={
+            <ProtectedRoute>
+              <ExpensesPage />
             </ProtectedRoute>
           } />
           <Route path="/comments" element={
