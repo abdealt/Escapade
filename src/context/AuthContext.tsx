@@ -48,11 +48,44 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
     }, []);
 
-    const signInWithGoogle = () => {
-        supabase.auth.signInWithOAuth({
-            provider:'google',
-        });
+    const signInWithGoogle = async () => {
+        try {
+            await supabase.auth.signInWithOAuth({
+                provider: 'google',
+                options: {
+                    queryParams: {
+                        access_type: 'offline',
+                        prompt: 'consent',
+                    },
+                    redirectTo: `${window.location.origin}`,
+                }
+            });
+        } catch (error: any) {
+            console.error('Erreur lors de la connexion Google:', error.message);
+            throw error;
+        }
     }
+
+    useEffect(() => {
+        // Écouter les changements d'état d'authentification
+        const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
+            setUser(session?.user ?? null);
+            
+            // Si un utilisateur vient de se connecter, rediriger si nécessaire
+            if (event === 'SIGNED_IN' && session?.user) {
+                const redirectPath = localStorage.getItem('redirectAfterLogin');
+                if (redirectPath) {
+                    localStorage.removeItem('redirectAfterLogin');
+                    window.location.href = redirectPath;
+                }
+            }
+        });
+
+        // Nettoyage
+        return () => {
+            listener?.subscription.unsubscribe();
+        };
+    }, []);
 
     const signInWithEmail = async (email: string, password: string) => {
         const { error } = await supabase.auth.signInWithPassword({

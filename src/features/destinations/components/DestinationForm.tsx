@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { supabase } from "../supabase-client";
+import { supabase } from "../../../supabase-client";
 
 // Destination model avec timestamps
 export interface Destination {

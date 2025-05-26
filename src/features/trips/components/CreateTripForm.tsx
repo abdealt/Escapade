@@ -1,6 +1,6 @@
 import { useMutation } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { supabase } from "../supabase-client";
+import { supabase } from "../../../supabase-client";
 
 // Trip model avec created_email
 interface Trip {

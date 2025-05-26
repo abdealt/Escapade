@@ -2,7 +2,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { FaTrash } from "react-icons/fa";
 import { HiUser } from "react-icons/hi";
-import { supabase } from "../supabase-client";
+import { supabase } from "../../../supabase-client";
 
 interface Participant {
   id: string;

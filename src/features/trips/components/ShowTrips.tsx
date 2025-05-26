@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { TripItem } from "../pages/TripItem";
-import { supabase } from "../supabase-client";
+import { supabase } from "../../../supabase-client";
+import { TripItem } from "./TripItem";
 
 // Trip model
 export interface Trip {

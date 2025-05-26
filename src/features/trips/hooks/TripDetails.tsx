@@ -3,13 +3,13 @@ import { useState } from "react";
 import { FaArrowLeft, FaEdit, FaTrash } from "react-icons/fa";
 import { FcInvite } from "react-icons/fc";
 import { useNavigate, useParams } from "react-router";
-import { ActivitiesList } from "../components/ActivitiesList";
-import { CommentsActivitiesList } from "../components/CommentActivitiesList";
-import { CommentExpensesList } from "../components/CommentExpensesList";
-import { DestinationsList } from "../components/DestinationList";
-import { ExpensesList } from "../components/ExpensesList";
-import { ParticipantsList } from "../components/ParticipantsList";
-import { supabase } from "../supabase-client";
+import { supabase } from "../../../supabase-client";
+import { ActivitiesList } from "../../activities/components/ActivitiesList";
+import { CommentsActivitiesList } from "../../commentsActivities/components/CommentActivitiesList";
+import { CommentExpensesList } from "../../commentsExpenses/components/CommentExpensesList";
+import { DestinationsList } from "../../destinations/components/DestinationList";
+import { ExpensesList } from "../../expenses/components/ExpensesList";
+import { ParticipantsList } from "../../participants/components/ParticipantsList";
 
 interface Trip {
   id: string;

@@ -2,8 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { FaEdit, FaPlus, FaTrash } from "react-icons/fa";
 import { MdLocationCity, MdLocationOn } from "react-icons/md";
-import { supabase } from "../supabase-client";
-import { Destination, DestinationForm } from "./CreateDestinationForm";
+import { supabase } from "../../../supabase-client";
+import { Destination, DestinationForm } from "./DestinationForm";
 
 interface DestinationsListProps {
   tripId: string;

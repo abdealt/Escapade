@@ -1,15 +1,15 @@
 import { Navigate, Route, Routes } from 'react-router';
 import { Navbar } from './components/Navbar';
-import { TripsList } from './components/TripsList.tsx';
 import { ProtectedRoute } from './context/ProtectedRoute';
+import { Login } from './features/auth/components/LoginForm.tsx';
+import { CreateTripPage } from './features/trips/components/CreateTrip.tsx';
+import { TripDetails } from './features/trips/hooks/TripDetails.tsx';
 import { CommentsList } from './pages/CommentsPage.tsx';
-import { CreateTripPage } from './pages/CreateTrip';
 import { ExpensesPage } from './pages/ExpensesPage.tsx';
-import { Friends } from './pages/Friends';
-import { Home } from './pages/Home';
-import { Login } from './pages/Login';
+import { Friends } from './pages/FriendsPage.tsx';
+import { Home } from './pages/HomePage.tsx';
 import { ProfilePage } from './pages/ProfilePage';
-import { TripDetails } from './pages/TripDetails';
+import { TripsList } from './pages/TripsPage.tsx';
 
 function App() {
   return (

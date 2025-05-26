@@ -1,8 +1,8 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { FaEdit, FaPlus, FaTrash } from "react-icons/fa";
-import { supabase } from "../supabase-client";
-import { ExpenseForm } from "./CreateExpenseForm";
+import { supabase } from "../../../supabase-client";
+import { ExpenseForm } from "./ExpenseForm";
 
 interface ExpensesListProps {
   tripId: string;

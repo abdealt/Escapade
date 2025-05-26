@@ -1,9 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { FaEdit, FaPlus, FaTrash } from "react-icons/fa";
-import { useAuth } from "../context/AuthContext";
-import { supabase } from "../supabase-client";
-import { ActivityForm } from "./CreateActivityForm";
+import { useAuth } from "../../../context/AuthContext";
+import { supabase } from "../../../supabase-client";
+import { ActivityForm } from "./ActivitiesForm";
 
 interface Activity {
   id: string;

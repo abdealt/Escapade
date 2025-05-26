@@ -1,8 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { FaPlus } from "react-icons/fa";
-import { CreateTrip } from "../components/CreateTripForm"; // Assure-toi que ce composant existe pour gérer la création d'un voyage
-import { TripItem } from "../pages/TripItem";
+import { CreateTrip } from "../features/trips/components/CreateTripForm"; // Assure-toi que ce composant existe pour gérer la création d'un voyage
+import { TripItem } from "../features/trips/components/TripItem";
 import { supabase } from "../supabase-client";
 
 // Trip model

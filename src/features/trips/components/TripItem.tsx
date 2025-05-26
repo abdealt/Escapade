@@ -2,7 +2,7 @@ import { BsFillCalendarDateFill } from "react-icons/bs";
 import { MdDriveFileRenameOutline } from "react-icons/md";
 import { TbFileDescription } from "react-icons/tb";
 import { Link } from "react-router";
-import { Trip } from "../components/ShowTrips";
+import { Trip } from "./ShowTrips";
 
 interface Props {
   trip: Trip;

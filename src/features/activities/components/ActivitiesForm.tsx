@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { FaTimes } from "react-icons/fa";
-import { supabase } from "../supabase-client";
+import { supabase } from "../../../supabase-client";
 
 interface Destination {
   id: string;

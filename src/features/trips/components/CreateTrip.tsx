@@ -1,4 +1,4 @@
-import { CreateTrip } from "../components/CreateTripForm"
+import { CreateTrip } from "./CreateTripForm"
 
 export const CreateTripPage = () => {
     return (

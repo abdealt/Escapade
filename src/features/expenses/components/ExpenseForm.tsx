@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { useAuth } from "../context/AuthContext";
-import { supabase } from "../supabase-client";
+import { useAuth } from "../../../context/AuthContext";
+import { supabase } from "../../../supabase-client";
 
 interface ExpenseFormProps {
   tripId: string;

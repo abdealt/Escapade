@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { FcGoogle } from "react-icons/fc";
 import { Navigate, useLocation } from "react-router";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../../../context/AuthContext";
 
 interface LocationState {
   from?: string;

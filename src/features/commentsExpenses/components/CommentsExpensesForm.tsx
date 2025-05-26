@@ -1,35 +1,35 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FormEvent, useEffect, useState } from "react";
-import { supabase } from "../supabase-client";
+import { supabase } from "../../../supabase-client";
 
-interface CommentsFormProps {
+interface CommentsExpenseFormProps {
   tripId: string;
   onCommentAdded: () => void;
   editingComment: {
     id: number;
     content: string;
-    activity_id: number;
+    expense_id: number;
     user_comment: string;
   } | null;
   setEditingComment: (comment: null) => void;
-  selectedActivityId?: number | null;
+  selectedExpenseId?: number | null;
 }
 
-interface Activity {
+interface Expense {
   id: number;
   title: string;
 }
 
-export const CommentsActivitieForm = ({ 
+export const CommentsExpenseForm = ({ 
   tripId, 
   onCommentAdded, 
   editingComment, 
   setEditingComment,
-  selectedActivityId
-}: CommentsFormProps) => {
+  selectedExpenseId
+}: CommentsExpenseFormProps) => {
   const [comment, setComment] = useState("");
   const [userName, setUserName] = useState("");
-  const [localActivityId, setLocalActivityId] = useState<number | "">("");
+  const [localExpenseId, setLocalExpenseId] = useState<number | "">("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const queryClient = useQueryClient();
 
@@ -70,26 +70,26 @@ export const CommentsActivitieForm = ({
     return "Utilisateur";
   };
 
-  // Récupération des activités disponibles
-  const fetchActivities = async (): Promise<Activity[]> => {
+  // Récupération des dépenses disponibles
+  const fetchExpenses = async (): Promise<Expense[]> => {
     if (!tripId) return [];
 
     const { data, error } = await supabase
-      .from("activities")
+      .from("expenses")
       .select("id, title")
-      .order("datetime", { ascending: true });
-      
+      .eq("trip_id", tripId)
+      .order("date", { ascending: true });
+
     if (error) {
-      console.error("Erreur lors de la récupération des activités:", error);
+      console.error("Erreur lors de la récupération des dépenses:", error);
       return [];
     }
-    
     return data || [];
   };
 
-  const { data: activities } = useQuery<Activity[], Error>({
-    queryKey: ["activities", tripId],
-    queryFn: fetchActivities,
+  const { data: expenses } = useQuery<Expense[], Error>({
+    queryKey: ["expenses", tripId],
+    queryFn: fetchExpenses,
     enabled: !!tripId
   });
 
@@ -99,7 +99,6 @@ export const CommentsActivitieForm = ({
       const name = await fetchUserProfile();
       setUserName(name);
     };
-
     getUserName();
   }, []);
 
@@ -107,36 +106,36 @@ export const CommentsActivitieForm = ({
   useEffect(() => {
     if (editingComment) {
       setComment(editingComment.content);
-      setLocalActivityId(editingComment.activity_id);
+      setLocalExpenseId(editingComment.expense_id);
     } else {
       setComment("");
-      // Si un selectedActivityId est fourni, l'utiliser, sinon réinitialiser
-      setLocalActivityId(selectedActivityId || "");
+      // Si un selectedExpenseId est fourni, l'utiliser, sinon réinitialiser
+      setLocalExpenseId(selectedExpenseId || "");
     }
-  }, [editingComment, selectedActivityId]);
+  }, [editingComment, selectedExpenseId]);
 
-  // Si selectedActivityId change, mettre à jour localActivityId
+  // Si selectedExpenseId change, mettre à jour localExpenseId
   useEffect(() => {
-    if (selectedActivityId && !editingComment) {
-      setLocalActivityId(selectedActivityId);
+    if (selectedExpenseId && !editingComment) {
+      setLocalExpenseId(selectedExpenseId);
     }
-  }, [selectedActivityId, editingComment]);
+  }, [selectedExpenseId, editingComment]);
 
   // Mutation pour ajouter ou mettre à jour un commentaire
   const addOrUpdateCommentMutation = useMutation({
     mutationFn: async (newComment: { 
       content: string; 
-      activity_id: number; 
+      expense_id: number; 
       user_comment: string;
       id?: number 
     }) => {
       if (editingComment) {
         // Mettre à jour un commentaire existant
         const { data, error } = await supabase
-          .from("comments_activities")
+          .from("comments_expenses")
           .update({ 
             content: newComment.content,
-            activity_id: newComment.activity_id 
+            expense_id: newComment.expense_id 
             // Ne pas mettre à jour user_comment pour garder l'auteur original
           })
           .eq("id", editingComment.id)
@@ -150,11 +149,11 @@ export const CommentsActivitieForm = ({
         const userId = userData.user?.id;
 
         const { data, error } = await supabase
-          .from("comments_activities")
+          .from("comments_expenses")
           .insert([
             { 
               content: newComment.content, 
-              activity_id: newComment.activity_id,
+              expense_id: newComment.expense_id,
               user_comment: newComment.user_comment,
               user_id: userId
             }
@@ -167,13 +166,13 @@ export const CommentsActivitieForm = ({
     },
     onSuccess: (_, variables) => {
       // Invalider et récupérer à nouveau les commentaires
-      queryClient.invalidateQueries({ queryKey: ["comments", variables.activity_id] });
+      queryClient.invalidateQueries({ queryKey: ["comments_expenses", variables.expense_id] });
       onCommentAdded();
-      
+
       // Réinitialiser le formulaire
       setComment("");
-      if (!selectedActivityId) {
-        setLocalActivityId("");
+      if (!selectedExpenseId) {
+        setLocalExpenseId("");
       }
       if (editingComment) {
         setEditingComment(null);
@@ -189,17 +188,16 @@ export const CommentsActivitieForm = ({
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    
-    if (!comment.trim() || !localActivityId) return;
-    
+    if (!comment.trim() || !localExpenseId) return;
+
     setIsSubmitting(true);
-    
+
     try {
       if (editingComment) {
         // Mise à jour d'un commentaire existant
         addOrUpdateCommentMutation.mutate({ 
           content: comment, 
-          activity_id: Number(localActivityId),
+          expense_id: Number(localExpenseId),
           user_comment: editingComment.user_comment,
           id: editingComment.id 
         });
@@ -207,7 +205,7 @@ export const CommentsActivitieForm = ({
         // Ajout d'un nouveau commentaire
         addOrUpdateCommentMutation.mutate({
           content: comment, 
-          activity_id: Number(localActivityId),
+          expense_id: Number(localExpenseId),
           user_comment: userName
         });
       }
@@ -219,8 +217,8 @@ export const CommentsActivitieForm = ({
 
   const handleCancel = () => {
     setComment("");
-    if (!selectedActivityId) {
-      setLocalActivityId("");
+    if (!selectedExpenseId) {
+      setLocalExpenseId("");
     }
     if (editingComment) {
       setEditingComment(null);
@@ -230,23 +228,23 @@ export const CommentsActivitieForm = ({
   return (
     <form onSubmit={handleSubmit} className="bg-gray-700 p-4 rounded-lg">
       <div className="mb-4">
-        {/* Ne montrer le sélecteur d'activité que si aucun selectedActivityId n'est passé de l'extérieur */}
-        {!selectedActivityId && (
+        {/* Ne montrer le sélecteur de dépense que si aucun selectedExpenseId n'est passé de l'extérieur */}
+        {!selectedExpenseId && (
           <>
             <label className="block text-sm font-medium text-gray-300 mb-2">
-              Activité
+              Dépense
             </label>
             <select
-              value={localActivityId}
-              onChange={(e) => setLocalActivityId(e.target.value ? Number(e.target.value) : "")}
+              value={localExpenseId}
+              onChange={(e) => setLocalExpenseId(e.target.value ? Number(e.target.value) : "")}
               className="w-full p-3 bg-gray-800 border border-gray-600 rounded text-white mb-4"
               required
               disabled={!!editingComment} // Désactiver en mode édition
             >
-              <option value="">Sélectionner une activité</option>
-              {activities && activities.map((activity) => (
-                <option key={activity.id} value={activity.id}>
-                  {activity.title}
+              <option value="">Sélectionner une dépense</option>
+              {expenses && expenses.map((expense) => (
+                <option key={expense.id} value={expense.id}>
+                  {expense.title}
                 </option>
               ))}
             </select>
@@ -281,7 +279,7 @@ export const CommentsActivitieForm = ({
           className={`px-4 py-2 ${
             isSubmitting ? "bg-blue-700" : "bg-blue-600 hover:bg-blue-500"
           } text-white rounded transition`}
-          disabled={isSubmitting || !localActivityId}
+          disabled={isSubmitting || !localExpenseId}
         >
           {isSubmitting ? (
             <span className="flex items-center">

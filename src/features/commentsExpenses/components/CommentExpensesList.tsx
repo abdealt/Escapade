@@ -1,70 +1,69 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { FaEdit, FaTrash } from "react-icons/fa";
-import { supabase } from "../supabase-client";
-import { CommentsActivitieForm } from "./CreateCommentsActivitiesForm";
+import { supabase } from "../../../supabase-client";
+import { CommentsExpenseForm } from "./CommentsExpensesForm";
 
 interface Comment {
   id: number;
   user_id: string;
-  content: string; // Le contenu du commentaire
-  activity_id: number;
+  content: string;
+  expense_id: number;
   created_at: string;
-  user_comment: string; // Le nom de l'utilisateur
+  user_comment: string;
 }
 
-interface Activity {
+interface Expense {
   id: number;
   title: string;
 }
 
-interface CommentsListProps {
+interface CommentListProps {
   tripId: string;
-  activityId?: number; // Optionnel, si on veut préfiltrer pour une activité spécifique
+  expenseId?: number; // Optionnel, si on veut préfiltrer pour une dépense spécifique
 }
 
-export const CommentsActivitiesList = ({ tripId, activityId }: CommentsListProps) => {
+export const CommentExpensesList = ({ tripId, expenseId }: CommentListProps) => {
   const [editingComment, setEditingComment] = useState<Comment | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [commentToDelete, setCommentToDelete] = useState<number | null>(null);
-  const [selectedActivityId, setSelectedActivityId] = useState<number | null>(activityId || null);
+  const [selectedExpenseId, setSelectedExpenseId] = useState<number | null>(expenseId || null);
 
-  // Fonction pour récupérer les activités disponibles
-  const fetchActivities = async (): Promise<Activity[]> => {
+  // Fonction pour récupérer les dépenses disponibles
+  const fetchExpenses = async (): Promise<Expense[]> => {
     const { data, error } = await supabase
-      .from("activities")
+      .from("expenses")
       .select("id, title")
-      .order("datetime", { ascending: true });
-      
+      .eq("trip_id", tripId)
+      .order("date", { ascending: true });
+
     if (error) {
-      console.error("Erreur lors de la récupération des activités:", error);
+      console.error("Erreur lors de la récupération des dépenses:", error);
       return [];
     }
-    
     return data || [];
   };
 
-  // Récupérer la liste des activités
-  const { data: activities } = useQuery<Activity[], Error>({
-    queryKey: ["activities", tripId],
-    queryFn: fetchActivities,
+  // Récupérer la liste des dépenses
+  const { data: expenses } = useQuery<Expense[], Error>({
+    queryKey: ["expenses", tripId],
+    queryFn: fetchExpenses,
     enabled: !!tripId
   });
 
-  // Fonction pour récupérer les commentaires d'une activité
+  // Fonction pour récupérer les commentaires d'une dépense
   const fetchComments = async (): Promise<Comment[]> => {
-    if (!selectedActivityId) return [];
-    
+    if (!selectedExpenseId) return [];
+
     const { data, error } = await supabase
-      .from("comments_activities")
+      .from("comments_expenses")
       .select("*")
-      .eq("activity_id", selectedActivityId)
+      .eq("expense_id", selectedExpenseId)
       .order("created_at", { ascending: false });
 
     if (error) {
       throw new Error(error.message);
     }
-
     return data as Comment[];
   };
 
@@ -74,13 +73,13 @@ export const CommentsActivitiesList = ({ tripId, activityId }: CommentsListProps
     isLoading: isLoadingComments, 
     refetch: refetchComments 
   } = useQuery<Comment[], Error>({
-    queryKey: ["comments", selectedActivityId],
+    queryKey: ["comments_expenses", selectedExpenseId],
     queryFn: fetchComments,
-    enabled: !!selectedActivityId
+    enabled: !!selectedExpenseId
   });
 
-  const handleActivityChange = (activityId: number | null) => {
-    setSelectedActivityId(activityId);
+  const handleExpenseChange = (expenseId: number | null) => {
+    setSelectedExpenseId(expenseId);
     setEditingComment(null);
   };
 
@@ -92,10 +91,9 @@ export const CommentsActivitiesList = ({ tripId, activityId }: CommentsListProps
     if (commentToDelete) {
       try {
         await supabase
-          .from("comments_activities")
+          .from("comments_expenses")
           .delete()
           .eq("id", commentToDelete);
-        
         refetchComments();
         setShowDeleteModal(false);
         setCommentToDelete(null);
@@ -122,67 +120,67 @@ export const CommentsActivitiesList = ({ tripId, activityId }: CommentsListProps
     });
   };
 
-  // Trouver le titre de l'activité à partir de son ID
-  const getActivityTitle = (activityId: number) => {
-    const activity = activities?.find(a => a.id === activityId);
-    return activity ? activity.title : 'Activité inconnue';
+  // Trouver le titre de la dépense à partir de son ID
+  const getExpenseTitle = (expenseId: number) => {
+    const expense = expenses?.find(e => e.id === expenseId);
+    return expense ? expense.title : 'Dépense inconnue';
   };
 
   return (
     <div>
-      {/* Sélecteur d'activité */}
+      {/* Sélecteur de dépense */}
       <div className="bg-gray-700 p-4 rounded-lg mb-6">
         <label className="block text-sm font-medium text-gray-300 mb-2">
-          Sélectionner une activité
+          Sélectionner une dépense
         </label>
         <select
-          value={selectedActivityId || ""}
-          onChange={(e) => handleActivityChange(e.target.value ? parseInt(e.target.value) : null)}
+          value={selectedExpenseId || ""}
+          onChange={(e) => handleExpenseChange(e.target.value ? parseInt(e.target.value) : null)}
           className="w-full p-2 bg-gray-800 border border-gray-600 rounded text-white"
         >
-          <option value="">Sélectionner une activité</option>
-          {activities && activities.map((activity) => (
-            <option key={activity.id} value={activity.id}>
-              {activity.title}
+          <option value="">Sélectionner une dépense</option>
+          {expenses && expenses.map((expense) => (
+            <option key={expense.id} value={expense.id}>
+              {expense.title}
             </option>
           ))}
         </select>
       </div>
 
-      {/* Afficher le formulaire de commentaires uniquement si une activité est sélectionnée */}
-      {selectedActivityId && (
+      {/* Afficher le formulaire de commentaires uniquement si une dépense est sélectionnée */}
+      {selectedExpenseId && (
         <div className="mb-6">
           <h3 className="text-lg font-medium mb-3">
-            Ajouter un commentaire pour "{getActivityTitle(selectedActivityId)}"
+            Ajouter un commentaire pour "{getExpenseTitle(selectedExpenseId)}"
           </h3>
-          <CommentsActivitieForm 
+          <CommentsExpenseForm 
             tripId={tripId} 
             onCommentAdded={refetchComments} 
             editingComment={editingComment} 
             setEditingComment={setEditingComment}
-            selectedActivityId={selectedActivityId}
+            selectedExpenseId={selectedExpenseId}
           />
         </div>
       )}
 
       {/* Liste des commentaires */}
       <div className="mt-6 space-y-4">
-        {!selectedActivityId ? (
+        {!selectedExpenseId ? (
           <div className="bg-gray-700 p-4 rounded-lg">
-            <p className="text-gray-300">Veuillez sélectionner une activité pour voir les commentaires.</p>
+            <p className="text-gray-300">Veuillez sélectionner une dépense pour voir les commentaires.</p>
           </div>
         ) : (
           <>
             <h3 className="text-lg font-medium">
-              Commentaires pour "{getActivityTitle(selectedActivityId)}"
+              Commentaires pour "{getExpenseTitle(selectedExpenseId)}"
             </h3>
-            
+
             {isLoadingComments && (
               <div className="flex items-center justify-center h-48">
                 <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
               </div>
             )}
-            
+
             {commentsError && (
               <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
                 <strong className="font-bold">Erreur: </strong>
@@ -224,7 +222,7 @@ export const CommentsActivitiesList = ({ tripId, activityId }: CommentsListProps
               ))
             ) : (
               <div className="bg-gray-700 p-4 rounded-lg">
-                <p className="text-gray-300">Aucun commentaire pour cette activité.</p>
+                <p className="text-gray-300">Aucun commentaire pour cette dépense.</p>
               </div>
             )}
           </>
