@@ -1,23 +1,13 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { FormEvent, useEffect, useState } from "react";
-import { supabase } from "../../../supabase-client";
+import { useCommentActivities } from "../hooks/useCommentActivities";
+import { useCommentActivityForm } from "../hooks/useCommentActivityForm";
+import { CommentActivity } from "../services/commentActivityService";
 
 interface CommentsFormProps {
   tripId: string;
   onCommentAdded: () => void;
-  editingComment: {
-    id: number;
-    content: string;
-    activity_id: number;
-    user_comment: string;
-  } | null;
+  editingComment: CommentActivity | null;
   setEditingComment: (comment: null) => void;
   selectedActivityId?: number | null;
-}
-
-interface Activity {
-  id: number;
-  title: string;
 }
 
 export const CommentsActivitieForm = ({ 
@@ -27,205 +17,56 @@ export const CommentsActivitieForm = ({
   setEditingComment,
   selectedActivityId
 }: CommentsFormProps) => {
-  const [comment, setComment] = useState("");
-  const [userName, setUserName] = useState("");
-  const [localActivityId, setLocalActivityId] = useState<number | "">("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const queryClient = useQueryClient();
+  const {
+    activities,
+    userProfile,
+    isLoadingUserProfile,
+    createOrUpdateComment,
+    isSubmitting
+  } = useCommentActivities(tripId, selectedActivityId);
 
-  // Récupération du profil utilisateur
-  const fetchUserProfile = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      // D'abord, vérifions le display_name dans la table users
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('display_name')
-        .eq('id', user.id)
-        .single();
-
-      if (!userError && userData?.display_name) {
-        return userData.display_name;
-      }
-
-      // Si pas de display_name, on utilise le nom du provider
-      if (user.user_metadata && user.user_metadata.full_name) {
-        return user.user_metadata.full_name;
-      }
-
-      // En dernier recours, on vérifie dans la table profiles
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('full_name')
-        .eq('id', user.id)
-        .single();
-
-      if (error) {
-        console.error("Erreur lors de la récupération du profil:", error);
-        return user.email || "Utilisateur";
-      }
-      
-      return data?.full_name || user.email || "Utilisateur";
-    }
-    return "Utilisateur";
-  };
-
-  // Récupération des activités disponibles
-  const fetchActivities = async (): Promise<Activity[]> => {
-    if (!tripId) return [];
-
-    const { data, error } = await supabase
-      .from("activities")
-      .select("id, title")
-      .order("datetime", { ascending: true });
-      
-    if (error) {
-      console.error("Erreur lors de la récupération des activités:", error);
-      return [];
-    }
-    
-    return data || [];
-  };
-
-  const { data: activities } = useQuery<Activity[], Error>({
-    queryKey: ["activities", tripId],
-    queryFn: fetchActivities,
-    enabled: !!tripId
-  });
-
-  // Récupérer le nom d'utilisateur au chargement
-  useEffect(() => {
-    const getUserName = async () => {
-      const name = await fetchUserProfile();
-      setUserName(name);
-    };
-
-    getUserName();
-  }, []);
-
-  // Mettre à jour le formulaire si un commentaire est en cours d'édition
-  useEffect(() => {
-    if (editingComment) {
-      setComment(editingComment.content);
-      setLocalActivityId(editingComment.activity_id);
-    } else {
-      setComment("");
-      // Si un selectedActivityId est fourni, l'utiliser, sinon réinitialiser
-      setLocalActivityId(selectedActivityId || "");
-    }
-  }, [editingComment, selectedActivityId]);
-
-  // Si selectedActivityId change, mettre à jour localActivityId
-  useEffect(() => {
-    if (selectedActivityId && !editingComment) {
-      setLocalActivityId(selectedActivityId);
-    }
-  }, [selectedActivityId, editingComment]);
-
-  // Mutation pour ajouter ou mettre à jour un commentaire
-  const addOrUpdateCommentMutation = useMutation({
-    mutationFn: async (newComment: { 
-      content: string; 
-      activity_id: number; 
-      user_comment: string;
-      id?: number 
-    }) => {
-      if (editingComment) {
-        // Mettre à jour un commentaire existant
-        const { data, error } = await supabase
-          .from("comments_activities")
-          .update({ 
-            content: newComment.content,
-            activity_id: newComment.activity_id 
-            // Ne pas mettre à jour user_comment pour garder l'auteur original
-          })
-          .eq("id", editingComment.id)
-          .select();
-
-        if (error) throw error;
-        return data;
-      } else {
-        // Ajouter un nouveau commentaire
-        const { data: userData } = await supabase.auth.getUser();
-        const userId = userData.user?.id;
-
-        const { data, error } = await supabase
-          .from("comments_activities")
-          .insert([
-            { 
-              content: newComment.content, 
-              activity_id: newComment.activity_id,
-              user_comment: newComment.user_comment,
-              user_id: userId
-            }
-          ])
-          .select();
-
-        if (error) throw error;
-        return data;
-      }
+  const {
+    formData,
+    formErrors,
+    isEditMode,
+    handleChange,
+    handleSubmit,
+    handleCancel,
+    setSubmitError
+  } = useCommentActivityForm({
+    editingComment,
+    selectedActivityId,
+    userName: userProfile || "Utilisateur",
+    onSubmit: (data, editingCommentId) => {
+      createOrUpdateComment(data, editingCommentId, {
+        onSuccess: () => {
+          onCommentAdded();
+          if (editingComment) {
+            setEditingComment(null);
+          }
+        },
+        onError: (error) => {
+          console.error("Erreur lors de l'ajout/mise à jour du commentaire:", error);
+          setSubmitError("Une erreur est survenue lors de l'enregistrement du commentaire.");
+        }
+      });
     },
-    onSuccess: (_, variables) => {
-      // Invalider et récupérer à nouveau les commentaires
-      queryClient.invalidateQueries({ queryKey: ["comments", variables.activity_id] });
-      onCommentAdded();
-      
-      // Réinitialiser le formulaire
-      setComment("");
-      if (!selectedActivityId) {
-        setLocalActivityId("");
-      }
+    onCancel: () => {
       if (editingComment) {
         setEditingComment(null);
       }
-    },
-    onError: (error) => {
-      console.error("Erreur lors de l'ajout/mise à jour du commentaire:", error);
-    },
-    onSettled: () => {
-      setIsSubmitting(false);
     }
   });
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    
-    if (!comment.trim() || !localActivityId) return;
-    
-    setIsSubmitting(true);
-    
-    try {
-      if (editingComment) {
-        // Mise à jour d'un commentaire existant
-        addOrUpdateCommentMutation.mutate({ 
-          content: comment, 
-          activity_id: Number(localActivityId),
-          user_comment: editingComment.user_comment,
-          id: editingComment.id 
-        });
-      } else {
-        // Ajout d'un nouveau commentaire
-        addOrUpdateCommentMutation.mutate({
-          content: comment, 
-          activity_id: Number(localActivityId),
-          user_comment: userName
-        });
-      }
-    } catch (error) {
-      console.error("Erreur lors de la soumission:", error);
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleCancel = () => {
-    setComment("");
-    if (!selectedActivityId) {
-      setLocalActivityId("");
-    }
-    if (editingComment) {
-      setEditingComment(null);
-    }
-  };
+  if (isLoadingUserProfile) {
+    return (
+      <div className="bg-gray-700 p-4 rounded-lg">
+        <div className="flex justify-center">
+          <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-blue-500"></div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <form onSubmit={handleSubmit} className="bg-gray-700 p-4 rounded-lg">
@@ -237,11 +78,14 @@ export const CommentsActivitieForm = ({
               Activité
             </label>
             <select
-              value={localActivityId}
-              onChange={(e) => setLocalActivityId(e.target.value ? Number(e.target.value) : "")}
-              className="w-full p-3 bg-gray-800 border border-gray-600 rounded text-white mb-4"
+              name="activity_id"
+              value={formData.activity_id}
+              onChange={handleChange}
+              className={`w-full p-3 bg-gray-800 border rounded text-white mb-4 ${
+                formErrors.activity_id ? "border-red-500" : "border-gray-600"
+              }`}
               required
-              disabled={!!editingComment} // Désactiver en mode édition
+              disabled={isEditMode} // Désactiver en mode édition
             >
               <option value="">Sélectionner une activité</option>
               {activities && activities.map((activity) => (
@@ -250,6 +94,9 @@ export const CommentsActivitieForm = ({
                 </option>
               ))}
             </select>
+            {formErrors.activity_id && (
+              <p className="text-red-500 text-sm mt-1 mb-4">{formErrors.activity_id}</p>
+            )}
           </>
         )}
 
@@ -257,16 +104,30 @@ export const CommentsActivitieForm = ({
           Commentaire
         </label>
         <textarea
-          value={comment}
-          onChange={(e) => setComment(e.target.value)}
+          name="content"
+          value={formData.content}
+          onChange={handleChange}
           placeholder="Ajouter un commentaire..."
-          className="w-full p-3 bg-gray-800 border border-gray-600 rounded text-white resize-none"
+          className={`w-full p-3 bg-gray-800 border rounded text-white resize-none ${
+            formErrors.content ? "border-red-500" : "border-gray-600"
+          }`}
           rows={3}
           required
         />
+        {formErrors.content && (
+          <p className="text-red-500 text-sm mt-1">{formErrors.content}</p>
+        )}
       </div>
+
+      {/* Message d'erreur général */}
+      {formErrors.submit && (
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+          <span className="block sm:inline">{formErrors.submit}</span>
+        </div>
+      )}
+
       <div className="flex justify-end space-x-3">
-        {editingComment && (
+        {isEditMode && (
           <button
             type="button"
             onClick={handleCancel}
@@ -281,15 +142,15 @@ export const CommentsActivitieForm = ({
           className={`px-4 py-2 ${
             isSubmitting ? "bg-blue-700" : "bg-blue-600 hover:bg-blue-500"
           } text-white rounded transition`}
-          disabled={isSubmitting || !localActivityId}
+          disabled={isSubmitting || !formData.activity_id}
         >
           {isSubmitting ? (
             <span className="flex items-center">
               <span className="animate-spin h-4 w-4 mr-2 border-t-2 border-b-2 border-white rounded-full"></span>
-              {editingComment ? "Mise à jour..." : "Envoi..."}
+              {isEditMode ? "Mise à jour..." : "Envoi..."}
             </span>
           ) : (
-            editingComment ? "Mettre à jour" : "Ajouter"
+            isEditMode ? "Mettre à jour" : "Ajouter"
           )}
         </button>
       </div>

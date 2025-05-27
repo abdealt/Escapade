@@ -1,22 +1,8 @@
-import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { FaEdit, FaTrash } from "react-icons/fa";
-import { supabase } from "../../../supabase-client";
+import { useCommentActivities } from "../hooks/useCommentActivities";
+import { CommentActivity } from "../services/commentActivityService";
 import { CommentsActivitieForm } from "./CommentsActivitiesForm";
-
-interface Comment {
-  id: number;
-  user_id: string;
-  content: string; // Le contenu du commentaire
-  activity_id: number;
-  created_at: string;
-  user_comment: string; // Le nom de l'utilisateur
-}
-
-interface Activity {
-  id: number;
-  title: string;
-}
 
 interface CommentsListProps {
   tripId: string;
@@ -24,79 +10,36 @@ interface CommentsListProps {
 }
 
 export const CommentsActivitiesList = ({ tripId, activityId }: CommentsListProps) => {
-  const [editingComment, setEditingComment] = useState<Comment | null>(null);
+  const [editingComment, setEditingComment] = useState<CommentActivity | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [commentToDelete, setCommentToDelete] = useState<number | null>(null);
   const [selectedActivityId, setSelectedActivityId] = useState<number | null>(activityId || null);
 
-  // Fonction pour récupérer les activités disponibles
-  const fetchActivities = async (): Promise<Activity[]> => {
-    const { data, error } = await supabase
-      .from("activities")
-      .select("id, title")
-      .order("datetime", { ascending: true });
-      
-    if (error) {
-      console.error("Erreur lors de la récupération des activités:", error);
-      return [];
-    }
-    
-    return data || [];
-  };
-
-  // Récupérer la liste des activités
-  const { data: activities } = useQuery<Activity[], Error>({
-    queryKey: ["activities", tripId],
-    queryFn: fetchActivities,
-    enabled: !!tripId
-  });
-
-  // Fonction pour récupérer les commentaires d'une activité
-  const fetchComments = async (): Promise<Comment[]> => {
-    if (!selectedActivityId) return [];
-    
-    const { data, error } = await supabase
-      .from("comments_activities")
-      .select("*")
-      .eq("activity_id", selectedActivityId)
-      .order("created_at", { ascending: false });
-
-    if (error) {
-      throw new Error(error.message);
-    }
-
-    return data as Comment[];
-  };
-
-  const { 
-    data: comments, 
-    error: commentsError, 
-    isLoading: isLoadingComments, 
-    refetch: refetchComments 
-  } = useQuery<Comment[], Error>({
-    queryKey: ["comments", selectedActivityId],
-    queryFn: fetchComments,
-    enabled: !!selectedActivityId
-  });
+  const {
+    activities,
+    comments,
+    isLoadingActivities,
+    isLoadingComments,
+    activitiesError,
+    commentsError,
+    deleteComment,
+    refetchComments,
+    isDeleting
+  } = useCommentActivities(tripId, selectedActivityId);
 
   const handleActivityChange = (activityId: number | null) => {
     setSelectedActivityId(activityId);
     setEditingComment(null);
   };
 
-  const handleEdit = (comment: Comment) => {
+  const handleEdit = (comment: CommentActivity) => {
     setEditingComment(comment);
   };
 
   const handleDelete = async () => {
     if (commentToDelete) {
       try {
-        await supabase
-          .from("comments_activities")
-          .delete()
-          .eq("id", commentToDelete);
-        
-        refetchComments();
+        await deleteComment(commentToDelete);
         setShowDeleteModal(false);
         setCommentToDelete(null);
       } catch (err) {
@@ -128,6 +71,23 @@ export const CommentsActivitiesList = ({ tripId, activityId }: CommentsListProps
     return activity ? activity.title : 'Activité inconnue';
   };
 
+  if (isLoadingActivities) {
+    return (
+      <div className="flex justify-center my-8">
+        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
+  if (activitiesError) {
+    return (
+      <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+        <strong className="font-bold">Erreur: </strong>
+        <span className="block sm:inline">{activitiesError.message}</span>
+      </div>
+    );
+  }
+
   return (
     <div>
       {/* Sélecteur d'activité */}
@@ -157,7 +117,7 @@ export const CommentsActivitiesList = ({ tripId, activityId }: CommentsListProps
           </h3>
           <CommentsActivitieForm 
             tripId={tripId} 
-            onCommentAdded={refetchComments} 
+            onCommentAdded={() => refetchComments()} 
             editingComment={editingComment} 
             setEditingComment={setEditingComment}
             selectedActivityId={selectedActivityId}
@@ -208,6 +168,7 @@ export const CommentsActivitiesList = ({ tripId, activityId }: CommentsListProps
                         onClick={() => handleEdit(comment)}
                         className="p-1.5 bg-blue-500 rounded-full hover:bg-blue-600 transition"
                         title="Modifier ce commentaire"
+                        disabled={isDeleting}
                       >
                         <FaEdit className="text-white text-sm" />
                       </button>
@@ -215,6 +176,7 @@ export const CommentsActivitiesList = ({ tripId, activityId }: CommentsListProps
                         onClick={() => confirmDelete(comment.id)}
                         className="p-1.5 bg-red-500 rounded-full hover:bg-red-600 transition"
                         title="Supprimer ce commentaire"
+                        disabled={isDeleting}
                       >
                         <FaTrash className="text-white text-sm" />
                       </button>
@@ -241,14 +203,18 @@ export const CommentsActivitiesList = ({ tripId, activityId }: CommentsListProps
               <button 
                 onClick={() => setShowDeleteModal(false)} 
                 className="px-4 py-2 bg-gray-600 rounded hover:bg-gray-700"
+                disabled={isDeleting}
               >
                 Annuler
               </button>
               <button 
                 onClick={handleDelete} 
-                className="px-4 py-2 bg-red-600 rounded hover:bg-red-700"
+                className={`px-4 py-2 bg-red-600 rounded hover:bg-red-700 ${
+                  isDeleting ? "opacity-50 cursor-not-allowed" : ""
+                }`}
+                disabled={isDeleting}
               >
-                Supprimer
+                {isDeleting ? "Suppression..." : "Supprimer"}
               </button>
             </div>
           </div>

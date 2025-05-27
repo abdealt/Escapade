@@ -107,9 +107,9 @@ export const CommentsList = () => {
                 {activityComments && activityComments.map((comment) => (
                     <div key={comment.id} className="bg-white p-4 rounded-lg shadow">
                         <div className="text-sm text-gray-500 mb-2">
-                            Commentaire sur une activité • {new Date(comment.created_at).toLocaleDateString()}
+                            Commentaire sur une activité • {new Date(comment.created_at).toLocaleDateString()} - Nom visible • {comment.user_comment}
                         </div>
-                        <p className="text-gray-700">{comment.user_comment}</p>
+                        <p className="text-gray-700">{comment.content}</p>
                     </div>
                 ))}
 
@@ -117,9 +117,9 @@ export const CommentsList = () => {
                 {expenseComments && expenseComments.map((comment) => (
                     <div key={comment.id} className="bg-white p-4 rounded-lg shadow">
                         <div className="text-sm text-gray-500 mb-2">
-                            Commentaire sur une dépense • {new Date(comment.created_at).toLocaleDateString()}
+                            Commentaire sur une dépense • {new Date(comment.created_at).toLocaleDateString()} - Nom visible • {comment.user_comment}
                         </div>
-                        <p className="text-gray-700">{comment.user_comment}</p>
+                        <p className="text-gray-700">{comment.content}</p>
                     </div>
                 ))}
             </div>
