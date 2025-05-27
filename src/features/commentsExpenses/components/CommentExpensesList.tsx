@@ -1,22 +1,8 @@
-import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { FaEdit, FaTrash } from "react-icons/fa";
-import { supabase } from "../../../supabase-client";
-import { CommentsExpenseForm } from "./CommentsExpensesForm";
-
-interface Comment {
-  id: number;
-  user_id: string;
-  content: string;
-  expense_id: number;
-  created_at: string;
-  user_comment: string;
-}
-
-interface Expense {
-  id: number;
-  title: string;
-}
+import { useCommentExpenses } from "../hooks/useCommentExpenses";
+import { CommentExpense } from "../services/commentExpenseService";
+import { CommentsExpenseForm } from "./CommentExpensesForm";
 
 interface CommentListProps {
   tripId: string;
@@ -24,77 +10,36 @@ interface CommentListProps {
 }
 
 export const CommentExpensesList = ({ tripId, expenseId }: CommentListProps) => {
-  const [editingComment, setEditingComment] = useState<Comment | null>(null);
+  const [editingComment, setEditingComment] = useState<CommentExpense | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [commentToDelete, setCommentToDelete] = useState<number | null>(null);
   const [selectedExpenseId, setSelectedExpenseId] = useState<number | null>(expenseId || null);
 
-  // Fonction pour récupérer les dépenses disponibles
-  const fetchExpenses = async (): Promise<Expense[]> => {
-    const { data, error } = await supabase
-      .from("expenses")
-      .select("id, title")
-      .eq("trip_id", tripId)
-      .order("date", { ascending: true });
-
-    if (error) {
-      console.error("Erreur lors de la récupération des dépenses:", error);
-      return [];
-    }
-    return data || [];
-  };
-
-  // Récupérer la liste des dépenses
-  const { data: expenses } = useQuery<Expense[], Error>({
-    queryKey: ["expenses", tripId],
-    queryFn: fetchExpenses,
-    enabled: !!tripId
-  });
-
-  // Fonction pour récupérer les commentaires d'une dépense
-  const fetchComments = async (): Promise<Comment[]> => {
-    if (!selectedExpenseId) return [];
-
-    const { data, error } = await supabase
-      .from("comments_expenses")
-      .select("*")
-      .eq("expense_id", selectedExpenseId)
-      .order("created_at", { ascending: false });
-
-    if (error) {
-      throw new Error(error.message);
-    }
-    return data as Comment[];
-  };
-
-  const { 
-    data: comments, 
-    error: commentsError, 
-    isLoading: isLoadingComments, 
-    refetch: refetchComments 
-  } = useQuery<Comment[], Error>({
-    queryKey: ["comments_expenses", selectedExpenseId],
-    queryFn: fetchComments,
-    enabled: !!selectedExpenseId
-  });
+  const {
+    expenses,
+    comments,
+    isLoadingExpenses,
+    isLoadingComments,
+    expensesError,
+    commentsError,
+    deleteComment,
+    refetchComments,
+    isDeleting
+  } = useCommentExpenses(tripId, selectedExpenseId);
 
   const handleExpenseChange = (expenseId: number | null) => {
     setSelectedExpenseId(expenseId);
     setEditingComment(null);
   };
 
-  const handleEdit = (comment: Comment) => {
+  const handleEdit = (comment: CommentExpense) => {
     setEditingComment(comment);
   };
 
   const handleDelete = async () => {
     if (commentToDelete) {
       try {
-        await supabase
-          .from("comments_expenses")
-          .delete()
-          .eq("id", commentToDelete);
-        refetchComments();
+        await deleteComment(commentToDelete);
         setShowDeleteModal(false);
         setCommentToDelete(null);
       } catch (err) {
@@ -126,6 +71,23 @@ export const CommentExpensesList = ({ tripId, expenseId }: CommentListProps) => 
     return expense ? expense.title : 'Dépense inconnue';
   };
 
+  if (isLoadingExpenses) {
+    return (
+      <div className="flex justify-center my-8">
+        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
+  if (expensesError) {
+    return (
+      <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+        <strong className="font-bold">Erreur: </strong>
+        <span className="block sm:inline">{expensesError.message}</span>
+      </div>
+    );
+  }
+
   return (
     <div>
       {/* Sélecteur de dépense */}
@@ -155,7 +117,7 @@ export const CommentExpensesList = ({ tripId, expenseId }: CommentListProps) => 
           </h3>
           <CommentsExpenseForm 
             tripId={tripId} 
-            onCommentAdded={refetchComments} 
+            onCommentAdded={() => refetchComments()} 
             editingComment={editingComment} 
             setEditingComment={setEditingComment}
             selectedExpenseId={selectedExpenseId}
@@ -174,13 +136,13 @@ export const CommentExpensesList = ({ tripId, expenseId }: CommentListProps) => 
             <h3 className="text-lg font-medium">
               Commentaires pour "{getExpenseTitle(selectedExpenseId)}"
             </h3>
-
+            
             {isLoadingComments && (
               <div className="flex items-center justify-center h-48">
                 <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
               </div>
             )}
-
+            
             {commentsError && (
               <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
                 <strong className="font-bold">Erreur: </strong>
@@ -206,6 +168,7 @@ export const CommentExpensesList = ({ tripId, expenseId }: CommentListProps) => 
                         onClick={() => handleEdit(comment)}
                         className="p-1.5 bg-blue-500 rounded-full hover:bg-blue-600 transition"
                         title="Modifier ce commentaire"
+                        disabled={isDeleting}
                       >
                         <FaEdit className="text-white text-sm" />
                       </button>
@@ -213,6 +176,7 @@ export const CommentExpensesList = ({ tripId, expenseId }: CommentListProps) => 
                         onClick={() => confirmDelete(comment.id)}
                         className="p-1.5 bg-red-500 rounded-full hover:bg-red-600 transition"
                         title="Supprimer ce commentaire"
+                        disabled={isDeleting}
                       >
                         <FaTrash className="text-white text-sm" />
                       </button>
@@ -239,14 +203,18 @@ export const CommentExpensesList = ({ tripId, expenseId }: CommentListProps) => 
               <button 
                 onClick={() => setShowDeleteModal(false)} 
                 className="px-4 py-2 bg-gray-600 rounded hover:bg-gray-700"
+                disabled={isDeleting}
               >
                 Annuler
               </button>
               <button 
                 onClick={handleDelete} 
-                className="px-4 py-2 bg-red-600 rounded hover:bg-red-700"
+                className={`px-4 py-2 bg-red-600 rounded hover:bg-red-700 ${
+                  isDeleting ? "opacity-50 cursor-not-allowed" : ""
+                }`}
+                disabled={isDeleting}
               >
-                Supprimer
+                {isDeleting ? "Suppression..." : "Supprimer"}
               </button>
             </div>
           </div>
