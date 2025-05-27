@@ -1,123 +1,28 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { FaEdit, FaPlus, FaTrash } from "react-icons/fa";
 import { useAuth } from "../../../context/AuthContext";
-import { supabase } from "../../../supabase-client";
+import { useActivities } from "../hooks/useActivities";
+import { Activity } from "../services/activityService";
 import { ActivityForm } from "./ActivitiesForm";
-
-interface Activity {
-  id: string;
-  destination_id: string;
-  title: string;
-  description: string;
-  datetime: string;
-  email: string;
-}
 
 interface ActivitiesListProps {
   tripId: string;
 }
 
-// Fonction pour récupérer les activités d'un voyage
-const fetchActivities = async (tripId: string): Promise<Activity[]> => {
-  // D'abord on récupère toutes les destinations du voyage
-  const { data: destinations, error: destError } = await supabase
-    .from("destinations")
-    .select("id")
-    .eq("trip_id", tripId);
-
-  if (destError) {
-    throw new Error(destError.message);
-  }
-
-  if (!destinations || destinations.length === 0) {
-    return []; // Pas de destinations, donc pas d'activités
-  }
-
-  // Récupérer les activités liées à ces destinations
-  const destinationIds = destinations.map(dest => dest.id);
-  const { data: activities, error } = await supabase
-    .from("activities")
-    .select("*")
-    .in("destination_id", destinationIds)
-    .order("datetime", { ascending: true });
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  return activities || [];
-};
-
-// Fonction pour récupérer les destinations d'un voyage (pour le formulaire)
-const fetchDestinations = async (tripId: string) => {
-  const { data, error } = await supabase
-    .from("destinations")
-    .select("*")
-    .eq("trip_id", tripId)
-    .order("city", { ascending: true });
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  return data || [];
-};
-
 export const ActivitiesList = ({ tripId }: ActivitiesListProps) => {
   const { user } = useAuth();
   const [showForm, setShowForm] = useState(false);
   const [editActivity, setEditActivity] = useState<Activity | null>(null);
-  const queryClient = useQueryClient();
 
-  // Requête pour récupérer les activités
-  const { data: activities, isLoading, error } = useQuery({
-    queryKey: ["activities", tripId],
-    queryFn: () => fetchActivities(tripId)
-  });
-
-  // Requête pour récupérer les destinations (pour le formulaire)
-  const { data: destinations } = useQuery({
-    queryKey: ["destinations", tripId],
-    queryFn: () => fetchDestinations(tripId)
-  });
-
-  // Mutation pour supprimer une activité
-  const deleteActivityMutation = useMutation({
-    mutationFn: async (activityId: string) => {
-      const { error } = await supabase
-        .from("activities")
-        .delete()
-        .eq("id", activityId);
-      
-      if (error) {
-        throw new Error(error.message);
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["activities", tripId] });
-    }
-  });
-
-  // Mutation pour modifier une activité
-  const updateActivityMutation = useMutation({
-    mutationFn: async (activity: Activity) => {
-      const { error } = await supabase
-        .from("activities")
-        .update({
-          ...activity,
-          email: user?.email // Ajouter l'email de l'utilisateur connecté
-        })
-        .eq("id", activity.id);
-      
-      if (error) {
-        throw new Error(error.message);
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["activities", tripId] });
-    }
-  });
+  const {
+    activities,
+    destinations,
+    isLoading,
+    error,
+    createOrUpdateActivity,
+    deleteActivity,
+    isSubmitting
+  } = useActivities(tripId);
 
   // Gérer la modification d'une activité
   const handleEdit = (activity: Activity) => {
@@ -132,8 +37,21 @@ export const ActivitiesList = ({ tripId }: ActivitiesListProps) => {
   // Gérer la suppression d'une activité
   const handleDelete = (activityId: string) => {
     if (confirm("Êtes-vous sûr de vouloir supprimer cette activité ?")) {
-      deleteActivityMutation.mutate(activityId);
+      deleteActivity(activityId);
     }
+  };
+
+  // Gérer la soumission du formulaire
+  const handleFormSubmit = (payload: any) => {
+    createOrUpdateActivity(payload, {
+      onSuccess: () => {
+        setShowForm(false);
+        setEditActivity(null);
+      },
+      onError: (error) => {
+        console.error("Erreur lors de l'enregistrement:", error);
+      }
+    });
   };
 
   // Formater les dates pour l'affichage
@@ -188,7 +106,12 @@ export const ActivitiesList = ({ tripId }: ActivitiesListProps) => {
             tripId={tripId}
             activity={editActivity}
             destinations={destinations || []}
-            onClose={() => setShowForm(false)}
+            onClose={() => {
+              setShowForm(false);
+              setEditActivity(null);
+            }}
+            onSubmit={handleFormSubmit}
+            isSubmitting={isSubmitting}
           />
         </div>
       )}

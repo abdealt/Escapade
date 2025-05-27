@@ -2,7 +2,7 @@ import { Navigate, Route, Routes } from 'react-router';
 import { Navbar } from './components/Navbar';
 import { ProtectedRoute } from './context/ProtectedRoute';
 import { Login } from './features/auth/components/LoginForm.tsx';
-import { CreateTripPage } from './features/trips/components/CreateTrip.tsx';
+import { CreateTrip } from './features/trips/components/TripForm.tsx';
 import { TripDetails } from './features/trips/hooks/TripDetails.tsx';
 import { CommentsList } from './pages/CommentsPage.tsx';
 import { ExpensesPage } from './pages/ExpensesPage.tsx';
@@ -36,7 +36,7 @@ function App() {
           } />
           <Route path="/create-trip" element={
             <ProtectedRoute>
-              <CreateTripPage />
+              <CreateTrip />
             </ProtectedRoute>
           } />
           <Route path="/trip/:tripId" element={
