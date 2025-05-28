@@ -16,6 +16,10 @@ interface Expense {
   paid_by: string;
   user_paid_by: string;
   date: string;
+  activity_id: string;
+  activities: {
+    title: string;
+  };
 }
 
 export const ExpensesList = ({ tripId }: ExpensesListProps) => {
@@ -30,7 +34,12 @@ export const ExpensesList = ({ tripId }: ExpensesListProps) => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("expenses")
-        .select("*")
+        .select(`
+          *,
+          activities (
+            title
+          )
+        `)
         .eq("trip_id", tripId)
         .order("date", { ascending: false });
         
@@ -109,6 +118,9 @@ export const ExpensesList = ({ tripId }: ExpensesListProps) => {
             <thead className="bg-gray-700">
               <tr>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                  Activité
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                   Titre
                 </th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
@@ -128,6 +140,9 @@ export const ExpensesList = ({ tripId }: ExpensesListProps) => {
             <tbody className="bg-gray-800 divide-y divide-gray-700">
               {expenses.map((expense) => (
                 <tr key={expense.id} className="hover:bg-gray-750">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                    {expense.activities.title}
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">
                     {expense.title}
                   </td>

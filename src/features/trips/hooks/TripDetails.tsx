@@ -6,7 +6,6 @@ import { useNavigate, useParams } from "react-router";
 import { supabase } from "../../../supabase-client";
 import { ActivitiesList } from "../../activities/components/ActivitiesList";
 import { CommentsActivitiesList } from "../../commentsActivities/components/CommentActivitiesList";
-import { CommentExpensesList } from "../../commentsExpenses/components/CommentExpensesList";
 import { DestinationsList } from "../../destinations/components/DestinationList";
 import { ExpensesList } from "../../expenses/components/ExpensesList";
 import { ParticipantsList } from "../../participants/components/ParticipantsList";
@@ -375,15 +374,9 @@ export const TripDetails = () => {
             <div className="space-y-6">
               <div className="bg-gray-700 p-4 rounded-lg">
                 <h2 className="text-xl font-semibold mb-4">Commentaires</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
+                <div className="grid grid-cols-1 md:grid-cols gap-4">
                     <h3 className="text-lg font-medium mb-2">Activités</h3>
                     <CommentsActivitiesList tripId={tripId} />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-medium mb-2">Dépenses</h3>
-                    <CommentExpensesList tripId={tripId} />
-                  </div>
                 </div>
               </div>
             </div>

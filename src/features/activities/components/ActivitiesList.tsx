@@ -131,7 +131,7 @@ export const ActivitiesList = ({ tripId }: ActivitiesListProps) => {
                   <p className="text-gray-400 mt-2">{activity.description || "Aucune description"}</p>
                 </div>
                 <div className="flex space-x-2">
-                  {activity.email === user?.email && (
+                  {activity.user_id === user?.id && (
                     <>
                       <button
                         onClick={() => handleEdit(activity)}

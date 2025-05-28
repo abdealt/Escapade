@@ -7,6 +7,7 @@ export interface Activity {
   description: string;
   datetime: string;
   email?: string;
+  user_id?: string;
 }
 
 export interface Destination {

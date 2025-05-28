@@ -17,6 +17,13 @@ interface Expense {
   paid_by?: string;
   user_paid_by: string;
   date: string;
+  activity_id: number;
+}
+
+interface Activity {
+  id: number;
+  title: string;
+  datetime: string;
 }
 
 export const ExpenseForm = ({ tripId, expenseId, onComplete }: ExpenseFormProps) => {
@@ -28,7 +35,8 @@ export const ExpenseForm = ({ tripId, expenseId, onComplete }: ExpenseFormProps)
     title: "",
     amount: "",
     user_paid_by: "",
-    date: new Date().toISOString().slice(0, 10)
+    date: new Date().toISOString().slice(0, 10),
+    activity_id: ""
   });
 
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
@@ -51,6 +59,40 @@ export const ExpenseForm = ({ tripId, expenseId, onComplete }: ExpenseFormProps)
     },
     enabled: !!expenseId
   });
+  // Récupérer la liste des activités via les destinations du voyage
+  const { data: activities } = useQuery<Activity[], Error>({
+    queryKey: ["activities", tripId],
+    queryFn: async () => {
+      // D'abord, récupérer les destinations du voyage
+      const { data: destinations, error: destError } = await supabase
+        .from("destinations")
+        .select("id")
+        .eq("trip_id", tripId);
+
+      if (destError) {
+        console.error("Erreur lors de la récupération des destinations:", destError);
+        return [];
+      }
+
+      if (!destinations?.length) return [];
+
+      // Ensuite, récupérer toutes les activités des destinations
+      const destinationIds = destinations.map(dest => dest.id);
+      const { data, error } = await supabase
+        .from("activities")
+        .select("id, title, datetime")
+        .in("destination_id", destinationIds)
+        .order("datetime", { ascending: true });
+        
+      if (error) {
+        console.error("Erreur lors de la récupération des activités:", error);
+        return [];
+      }
+      
+      return data || [];
+    },
+    enabled: !!tripId
+  });
 
   // Pré-remplir le formulaire en mode édition
   useEffect(() => {
@@ -59,7 +101,8 @@ export const ExpenseForm = ({ tripId, expenseId, onComplete }: ExpenseFormProps)
         title: existingExpense.title,
         amount: existingExpense.amount.toString(),
         user_paid_by: existingExpense.user_paid_by,
-        date: new Date(existingExpense.date).toISOString().slice(0, 10)
+        date: new Date(existingExpense.date).toISOString().slice(0, 10),
+        activity_id: existingExpense.activity_id?.toString() || ""
       });
     }
   }, [existingExpense]);
@@ -92,9 +135,24 @@ export const ExpenseForm = ({ tripId, expenseId, onComplete }: ExpenseFormProps)
   }, [userData, existingExpense]);
 
   // Gestion des changements dans le formulaire
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    
+    // Si c'est le champ activity_id qui change
+    if (name === 'activity_id') {
+      const selectedActivity = activities?.find(activity => activity.id.toString() === value);
+      if (selectedActivity) {
+        setFormData(prev => ({ 
+          ...prev, 
+          [name]: value,
+          date: new Date(selectedActivity.datetime).toISOString().slice(0, 10)
+        }));
+      } else {
+        setFormData(prev => ({ ...prev, [name]: value }));
+      }
+    } else {
+      setFormData(prev => ({ ...prev, [name]: value }));
+    }
     
     // Effacer l'erreur si l'utilisateur commence à corriger
     if (formErrors[name]) {
@@ -121,9 +179,8 @@ export const ExpenseForm = ({ tripId, expenseId, onComplete }: ExpenseFormProps)
     if (!formData.user_paid_by.trim()) {
       errors.user_paid_by = "Le nom de la personne ayant payé est requis.";
     }
-    
-    if (!formData.date) {
-      errors.date = "La date est requise.";
+      if (!formData.activity_id) {
+      errors.activity_id = "L'activité est requise.";
     }
     
     setFormErrors(errors);
@@ -180,7 +237,8 @@ export const ExpenseForm = ({ tripId, expenseId, onComplete }: ExpenseFormProps)
         title: formData.title.trim(),
         amount: parseFloat(formData.amount),
         user_paid_by: formData.user_paid_by.trim(),
-        date: new Date(formData.date).toISOString()
+        date: new Date(formData.date).toISOString(),
+        activity_id: parseInt(formData.activity_id)
       };
       
       expenseMutation.mutate(expenseData);
@@ -207,6 +265,32 @@ export const ExpenseForm = ({ tripId, expenseId, onComplete }: ExpenseFormProps)
         />
         {formErrors.title && (
           <p className="text-red-500 text-sm mt-1">{formErrors.title}</p>
+        )}
+      </div>
+
+      {/* Activité liée */}
+      <div>
+        <label htmlFor="activity_id" className="block text-gray-300 mb-2">
+          Activité liée
+        </label>
+        <select
+          id="activity_id"
+          name="activity_id"
+          value={formData.activity_id}
+          onChange={handleChange}
+          className={`w-full p-2 bg-gray-800 border rounded ${
+            formErrors.activity_id ? "border-red-500" : "border-gray-600"
+          }`}
+        >
+          <option value="">Sélectionner une activité</option>
+          {activities?.map((activity) => (
+            <option key={activity.id} value={activity.id}>
+              {activity.title}
+            </option>
+          ))}
+        </select>
+        {formErrors.activity_id && (
+          <p className="text-red-500 text-sm mt-1">{formErrors.activity_id}</p>
         )}
       </div>
 
@@ -245,29 +329,7 @@ export const ExpenseForm = ({ tripId, expenseId, onComplete }: ExpenseFormProps)
           readOnly
           className="w-full p-2 bg-gray-700 border rounded border-gray-600 cursor-not-allowed"
         />
-      </div>
-
-      {/* Date */}
-      <div>
-        <label htmlFor="date" className="block text-gray-300 mb-2">
-          Date de la dépense
-        </label>
-        <input
-          type="date"
-          id="date"
-          name="date"
-          value={formData.date}
-          onChange={handleChange}
-          className={`w-full p-2 bg-gray-800 border rounded ${
-            formErrors.date ? "border-red-500" : "border-gray-600"
-          }`}
-        />
-        {formErrors.date && (
-          <p className="text-red-500 text-sm mt-1">{formErrors.date}</p>
-        )}
-      </div>
-
-      {/* Message d'erreur général */}
+      </div>      {/* Message d'erreur général */}
       {formErrors.submit && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
           <span className="block sm:inline">{formErrors.submit}</span>

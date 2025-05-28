@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
+import { FaCalendar, FaCalendarAlt } from "react-icons/fa";
 import { supabase } from "../../../supabase-client";
 import { TripItem } from "./TripItem";
 
@@ -14,15 +15,21 @@ export interface Trip {
     created_at: Date;
 }
 
-const fetchTrips = async (userId: string): Promise<Trip[]> => {
-    const today = new Date().toISOString();
-    const { data, error } = await supabase
+const fetchTrips = async (userId: string, showAll: boolean = false): Promise<Trip[]> => {
+    const query = supabase
         .from("trips")
         .select("*")
         .eq("created_by", userId)
-        .lte('start_date', today) // date de début inférieure ou égale à aujourd'hui
-        .gt('end_date', today)    // date de fin supérieure à aujourd'hui
-        .order('end_date', { ascending: true });  // trier par date de fin la plus proche
+        .order('end_date', { ascending: true });
+
+    if (!showAll) {
+        const today = new Date().toISOString();
+        query
+            .lte('start_date', today)
+            .gt('end_date', today);
+    }
+
+    const { data, error } = await query;
         
     if (error) {
         throw new Error(error.message);
@@ -32,6 +39,7 @@ const fetchTrips = async (userId: string): Promise<Trip[]> => {
 
 export const ShowTrips = () => {
     const [userId, setUserId] = useState<string | null>(null);
+    const [showAllTrips, setShowAllTrips] = useState(false);
 
     useEffect(() => {
         const getUser = async () => {
@@ -42,9 +50,9 @@ export const ShowTrips = () => {
     }, []);
 
     const { data, error, isLoading } = useQuery<Trip[], Error>({
-        queryKey: ["trips", userId],
-        queryFn: () => fetchTrips(userId!),
-        enabled: !!userId, // n'exécute la requête que si userId est défini
+        queryKey: ["trips", userId, showAllTrips],
+        queryFn: () => fetchTrips(userId!, showAllTrips),
+        enabled: !!userId,
     });
 
     if (isLoading) {
@@ -56,6 +64,19 @@ export const ShowTrips = () => {
 
     return (
         <div>
+            <div className="flex justify-end mb-4">
+                <button
+                    onClick={() => setShowAllTrips(prev => !prev)}
+                    className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+                    title={showAllTrips ? "Afficher les voyages en cours" : "Afficher tous les voyages"}
+                >
+                    {showAllTrips ? <FaCalendar className="text-sm" /> : <FaCalendarAlt className="text-sm" />}
+                    <span className="text-sm">
+                        {showAllTrips ? "Voyages en cours" : "Tous les voyages"}
+                    </span>
+                </button>
+            </div>
+
             {data?.length === 0 && (
                 <div className="text-center text-gray-500">Aucun voyage trouvé.</div>
             )}

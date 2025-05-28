@@ -210,7 +210,7 @@ export const Home = () => {
         {/* Card: Mes voyages */}
         <div className="bg-gray-800 rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold text-white">Mes voyages</h2>
+            <h2 className="text-xl font-semibold text-white">Mes voyages en cours</h2>
             <div className="flex gap-3 items-center">
               <Link 
                 to="/my-trips" 
@@ -249,7 +249,7 @@ export const Home = () => {
         {/* Card: Voyages en compagnie */}
         <div className="bg-gray-800 rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold text-white">Les voyages en compagnie</h2>
+            <h2 className="text-xl font-semibold text-white">Les voyages collaboratif</h2>
             <button 
               onClick={() => setCollapseShared(prev => !prev)} 
               title={collapseShared ? "Développer" : "Réduire"} 

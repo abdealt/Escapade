@@ -16,11 +16,6 @@ interface ActivityComment extends BaseComment {
     target_id: string;
 }
 
-interface ExpenseComment extends BaseComment {
-    expense_id: string;
-    target_id: string;
-}
-
 // Fonctions pour récupérer les commentaires
 const fetchActivityComments = async (userId: string): Promise<ActivityComment[]> => {
     const { data, error } = await supabase
@@ -33,19 +28,6 @@ const fetchActivityComments = async (userId: string): Promise<ActivityComment[]>
         throw new Error(error.message);
     }
     return data as ActivityComment[];
-};
-
-const fetchExpenseComments = async (userId: string): Promise<ExpenseComment[]> => {
-    const { data, error } = await supabase
-        .from("comments_expenses")
-        .select("*")
-        .eq("user_id", userId)
-        .order("created_at", { ascending: false });
-
-    if (error) {
-        throw new Error(error.message);
-    }
-    return data as ExpenseComment[];
 };
 
 export const CommentsList = () => {
@@ -69,17 +51,7 @@ export const CommentsList = () => {
         enabled: !!userId,
     });
 
-    const { 
-        data: expenseComments, 
-        error: expenseError, 
-        isLoading: isLoadingExpenses 
-    } = useQuery<ExpenseComment[], Error>({
-        queryKey: ["expenseComments", userId],
-        queryFn: () => fetchExpenseComments(userId!),
-        enabled: !!userId,
-    });
-
-    if (isLoadingActivities || isLoadingExpenses) {
+    if (isLoadingActivities) {
         return <div>Loading...</div>;
     }
 
@@ -87,12 +59,7 @@ export const CommentsList = () => {
         return <div>Error loading activity comments: {activityError.message}</div>;
     }
 
-    if (expenseError) {
-        return <div>Error loading expense comments: {expenseError.message}</div>;
-    }
-
-    const hasNoComments = (!activityComments || activityComments.length === 0) && 
-                         (!expenseComments || expenseComments.length === 0);
+    const hasNoComments = (!activityComments || activityComments.length === 0)
 
     return (
         <div>
@@ -107,17 +74,7 @@ export const CommentsList = () => {
                 {activityComments && activityComments.map((comment) => (
                     <div key={comment.id} className="bg-white p-4 rounded-lg shadow">
                         <div className="text-sm text-gray-500 mb-2">
-                            Commentaire sur une activité • {new Date(comment.created_at).toLocaleDateString()} - Nom visible • {comment.user_comment}
-                        </div>
-                        <p className="text-gray-700">{comment.content}</p>
-                    </div>
-                ))}
-
-                {/* Affichage des commentaires de dépenses */}
-                {expenseComments && expenseComments.map((comment) => (
-                    <div key={comment.id} className="bg-white p-4 rounded-lg shadow">
-                        <div className="text-sm text-gray-500 mb-2">
-                            Commentaire sur une dépense • {new Date(comment.created_at).toLocaleDateString()} - Nom visible • {comment.user_comment}
+                            Commentaire du • {new Date(comment.created_at).toLocaleDateString()} - Nom visible • {comment.user_comment}
                         </div>
                         <p className="text-gray-700">{comment.content}</p>
                     </div>
