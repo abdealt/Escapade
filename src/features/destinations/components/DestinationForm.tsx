@@ -1,282 +1,171 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
-import { supabase } from "../../../supabase-client";
-
-// Destination model avec timestamps
-export interface Destination {
-  id: string;
-  trip_id: string;
-  city: string;
-  start_date: string; // Timestamp sous format string
-  end_date: string; // Timestamp sous format string
-}
-
-// Interface pour le trip parent
-interface Trip {
-  id: string;
-  start_date: string; // Timestamp sous format string
-  end_date: string; // Timestamp sous format string
-}
+import { FaTimes } from "react-icons/fa";
+import { useDestinationForm } from "../hooks/useDestinationForm";
+import { Destination, Trip } from "../services/destinationService";
 
 interface DestinationFormProps {
   tripId: string;
-  onSuccess?: () => void;
-  onCancel?: () => void;
-  destination?: Destination; // Pour l'édition
+  destination: Destination | null;
+  trip: Trip | null;
+  onClose: () => void;
+  onSubmit: (data: any) => void;
+  isSubmitting: boolean;
 }
 
-// Récupérer les infos du voyage parent pour vérifier l'intervalle de dates
-const fetchTripDetails = async (tripId: string): Promise<Trip> => {
-  const { data, error } = await supabase
-    .from("trips")
-    .select("id, start_date, end_date")
-    .eq("id", tripId)
-    .single();
-  
-  if (error) {
-    throw new Error(error.message);
-  }
-  
-  return data as Trip;
-};
-
-const createDestination = async (destination: Omit<Destination, "id">) => {
-  const { data, error } = await supabase.from("destinations").insert(destination);
-  if (error) {
-    throw new Error(error.message);
-  }
-  return data;
-};
-
-const updateDestination = async (destination: Destination) => {
-  const { data, error } = await supabase
-    .from("destinations")
-    .update({
-      city: destination.city,
-      start_date: destination.start_date,
-      end_date: destination.end_date,
-    })
-    .eq("id", destination.id);
-  
-  if (error) {
-    throw new Error(error.message);
-  }
-  return data;
-};
-
-export const DestinationForm = ({ tripId, onSuccess, onCancel, destination }: DestinationFormProps) => {
-  const isEditMode = !!destination;
-  const queryClient = useQueryClient();
-  
-  const [city, setCity] = useState(destination?.city || "");
-  const [startDate, setStartDate] = useState<string>(
-    destination?.start_date 
-      ? new Date(destination.start_date).toISOString().split('T')[0]
-      : new Date().toISOString().split('T')[0]
-  );
-  const [endDate, setEndDate] = useState<string>(
-    destination?.end_date 
-      ? new Date(destination.end_date).toISOString().split('T')[0]
-      : new Date().toISOString().split('T')[0]
-  );
-  const [validationError, setValidationError] = useState<string | null>(null);
-
-  // Requête pour récupérer les informations du voyage parent
-  const { data: trip, isLoading: tripLoading } = useQuery<Trip>({
-    queryKey: ["trip", tripId],
-    queryFn: () => fetchTripDetails(tripId),
-    enabled: !!tripId
-  });
-
-  // Mise à jour des dates min et max pour les sélecteurs de date
-  const [minDate, setMinDate] = useState<string>("");
-  const [maxDate, setMaxDate] = useState<string>("");
-
-  // Mise à jour des contraintes de date quand on récupère le voyage
-  useEffect(() => {
-    if (trip) {
-      const tripStartDate = new Date(trip.start_date).toISOString().split('T')[0];
-      const tripEndDate = new Date(trip.end_date).toISOString().split('T')[0];
-      
-      setMinDate(tripStartDate);
-      setMaxDate(tripEndDate);
-      
-      // Si les dates actuelles sont hors de l'intervalle, les ajuster
-      if (new Date(startDate) < new Date(tripStartDate)) {
-        setStartDate(tripStartDate);
-      }
-      
-      if (new Date(endDate) > new Date(tripEndDate)) {
-        setEndDate(tripEndDate);
-      }
-    }
-  }, [trip]);
-
-  const createMutation = useMutation({
-    mutationFn: createDestination,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["destinations", tripId] });
-      if (onSuccess) onSuccess();
-    },
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: updateDestination,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["destinations", tripId] });
-      if (onSuccess) onSuccess();
-    },
-  });
-
-  const validateDates = () => {
-    if (!trip) return false;
-    
-    const startTimestamp = new Date(startDate).getTime();
-    const endTimestamp = new Date(endDate).getTime();
-    const tripStartTimestamp = new Date(trip.start_date).getTime();
-    const tripEndTimestamp = new Date(trip.end_date).getTime();
-    
-    if (startTimestamp < tripStartTimestamp) {
-      setValidationError(`La Date de fin doit être après le début du voyage (${new Date(trip.start_date).toLocaleDateString()})`);
-      return false;
-    }
-    
-    if (endTimestamp > tripEndTimestamp) {
-      setValidationError(`La date de début doit être avant la fin du voyage (${new Date(trip.end_date).toLocaleDateString()})`);
-      return false;
-    }
-    
-    if (startTimestamp > endTimestamp) {
-      setValidationError("La Date de début doit être avant la date de fin");
-      return false;
-    }
-    
-    setValidationError(null);
-    return true;
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!validateDates()) {
-      return;
-    }
-    
-    // Conversion des dates en timestamps (ISO string)
-    const startTimestamp = new Date(startDate).toISOString();
-    const endTimestamp = new Date(endDate).toISOString();
-    
-    const destinationData = {
-      city,
-      start_date: startTimestamp,
-      end_date: endTimestamp,
-      trip_id: tripId,
-    };
-
-    if (isEditMode && destination) {
-      updateMutation.mutate({
-        ...destinationData,
-        id: destination.id,
+export const DestinationForm = ({ 
+  tripId, 
+  destination, 
+  trip, 
+  onClose, 
+  onSubmit,
+  isSubmitting 
+}: DestinationFormProps) => {
+  const {
+    formData,
+    formErrors,
+    isEditMode,
+    minDate,
+    maxDate,
+    handleChange,
+    handleSubmit,
+    setSubmitError
+  } = useDestinationForm({
+    destination,
+    trip,
+    onSubmit: (data) => {
+      onSubmit({
+        destinationId: destination?.id,
+        data
       });
-    } else {
-      createMutation.mutate(destinationData);
-    }
+    },
+    onClose
+  });
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('fr-FR');
   };
 
-  if (tripLoading) {
-    return <div className="text-center py-4">Chargement des informations du voyage...</div>;
+  if (!trip) {
+    return (
+      <div className="text-center py-4 text-gray-400">
+        Chargement des informations du voyage...
+      </div>
+    );
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      {validationError && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
-          <span className="block sm:inline">{validationError}</span>
-        </div>
-      )}
-      
-      <div className="grid grid-cols-1 md:grid-cols gap-4">
-        <div>
-          <label htmlFor="city" className="block text-sm font-medium text-gray-400">
-            Ville
-          </label>
-          <input
-            type="text"
-            id="city"
-            value={city}
-            onChange={(e) => setCity(e.target.value)}
-            className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm text-white"
-            placeholder="Paris, New York, Tokyo..."
-            required
-          />
-        </div>
-
-        <div>
-          <label htmlFor="startDate" className="block text-sm font-medium text-gray-400">
-            Date de début
-          </label>
-          <input
-            type="date"
-            id="startDate"
-            value={startDate}
-            min={minDate}
-            max={maxDate}
-            onChange={(e) => {
-              setStartDate(e.target.value);
-              setValidationError(null);
-            }}
-            className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm text-white"
-            required
-          />
-          {trip && (
-            <p className="text-xs text-gray-400 mt-1">
-              Entre {new Date(trip.start_date).toLocaleDateString()} et {new Date(trip.end_date).toLocaleDateString()}
-            </p>
-          )}
-        </div>
-
-        <div>
-          <label htmlFor="endDate" className="block text-sm font-medium text-gray-400">
-            Date de fin
-          </label>
-          <input
-            type="date"
-            id="endDate"
-            value={endDate}
-            min={startDate} // La date de fin doit être après la date de début
-            max={maxDate}
-            onChange={(e) => {
-              setEndDate(e.target.value);
-              setValidationError(null);
-            }}
-            className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm text-white"
-            required
-          />
-        </div>
+    <div className="bg-gray-700 rounded-lg p-6 mb-6">
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-xl font-semibold">
+          {isEditMode ? "Modifier la destination" : "Ajouter une destination"}
+        </h3>
+        <button 
+          onClick={onClose}
+          className="text-gray-400 hover:text-white transition"
+        >
+          <FaTimes />
+        </button>
       </div>
 
-      <div className="flex justify-end space-x-3">
-        {onCancel && (
+      <form onSubmit={handleSubmit}>
+        <div className="grid grid-cols-1 md:grid-cols-1 gap-4 mb-4">
+          {/* Ville */}
+          <div>
+            <label className="block text-gray-300 mb-2" htmlFor="city">
+              Ville
+            </label>
+            <input
+              type="text"
+              id="city"
+              name="city"
+              value={formData.city}
+              onChange={handleChange}
+              placeholder="Paris, New York, Tokyo..."
+              className={`w-full p-2 bg-gray-800 border rounded ${
+                formErrors.city ? "border-red-500" : "border-gray-600"
+              }`}
+            />
+            {formErrors.city && (
+              <p className="text-red-500 text-sm mt-1">{formErrors.city}</p>
+            )}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+          {/* Date de début */}
+          <div>
+            <label className="block text-gray-300 mb-2" htmlFor="startDate">
+              Date de début
+            </label>
+            <input
+              type="date"
+              id="startDate"
+              name="startDate"
+              value={formData.startDate}
+              min={minDate}
+              max={maxDate}
+              onChange={handleChange}
+              className={`w-full p-2 bg-gray-800 border rounded ${
+                formErrors.startDate ? "border-red-500" : "border-gray-600"
+              }`}
+            />
+            {formErrors.startDate && (
+              <p className="text-red-500 text-sm mt-1">{formErrors.startDate}</p>
+            )}
+            <p className="text-xs text-gray-400 mt-1">
+              Entre {formatDate(trip.start_date)} et {formatDate(trip.end_date)}
+            </p>
+          </div>
+
+          {/* Date de fin */}
+          <div>
+            <label className="block text-gray-300 mb-2" htmlFor="endDate">
+              Date de fin
+            </label>
+            <input
+              type="date"
+              id="endDate"
+              name="endDate"
+              value={formData.endDate}
+              min={formData.startDate} // La date de fin doit être après la date de début
+              max={maxDate}
+              onChange={handleChange}
+              className={`w-full p-2 bg-gray-800 border rounded ${
+                formErrors.endDate ? "border-red-500" : "border-gray-600"
+              }`}
+            />
+            {formErrors.endDate && (
+              <p className="text-red-500 text-sm mt-1">{formErrors.endDate}</p>
+            )}
+          </div>
+        </div>
+
+        {/* Message d'erreur général */}
+        {formErrors.submit && (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+            <span className="block sm:inline">{formErrors.submit}</span>
+          </div>
+        )}
+
+        {/* Boutons d'action */}
+        <div className="flex justify-end space-x-3">
           <button
             type="button"
-            onClick={onCancel}
-            className="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition"
+            onClick={onClose}
+            className="px-4 py-2 border border-gray-500 text-gray-300 rounded hover:bg-gray-600"
           >
             Annuler
           </button>
-        )}
-        <button
-          type="submit"
-          className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition"
-          disabled={createMutation.isPending || updateMutation.isPending}
-        >
-          {createMutation.isPending || updateMutation.isPending
-            ? "Chargement..."
-            : isEditMode
-            ? "Mettre à jour"
-            : "Ajouter"}
-        </button>
-      </div>
-    </form>
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className={`px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 ${
+              isSubmitting ? "opacity-50 cursor-not-allowed" : ""
+            }`}
+          >
+            {isSubmitting ? "Enregistrement..." : isEditMode ? "Mettre à jour" : "Ajouter"}
+          </button>
+        </div>
+      </form>
+    </div>
   );
 };
