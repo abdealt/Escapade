@@ -1,360 +1,184 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
-import { useAuth } from "../../../context/AuthContext";
-import { supabase } from "../../../supabase-client";
+import { FaTimes } from "react-icons/fa";
+import { useExpenseForm } from "../hooks/useExpenseForm";
+import { Activity, ExpenseFormData } from "../services/expenseService";
 
 interface ExpenseFormProps {
   tripId: string;
   expenseId?: string | null;
-  onComplete: () => void;
+  activities: Activity[];
+  onClose: () => void;
+  onSubmit: (data: any) => void;
+  isSubmitting: boolean;
 }
 
-interface Expense {
-  id?: string;
-  trip_id: string;
-  title: string;
-  amount: number;
-  paid_by?: string;
-  user_paid_by: string;
-  date: string;
-  activity_id: number;
-}
-
-interface Activity {
-  id: number;
-  title: string;
-  datetime: string;
-}
-
-export const ExpenseForm = ({ tripId, expenseId, onComplete }: ExpenseFormProps) => {
-  const queryClient = useQueryClient();
-  const { user } = useAuth();
-
-  // État initial du formulaire
-  const [formData, setFormData] = useState({
-    title: "",
-    amount: "",
-    user_paid_by: "",
-    date: new Date().toISOString().slice(0, 10),
-    activity_id: ""
-  });
-
-  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // Récupération des détails de la dépense pour l'édition
-  const { data: existingExpense } = useQuery<Expense | null>({
-    queryKey: ["expense", expenseId],
-    queryFn: async () => {
-      if (!expenseId) return null;
-      
-      const { data, error } = await supabase
-        .from("expenses")
-        .select("*")
-        .eq("id", expenseId)
-        .single();
-      
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!expenseId
-  });
-  // Récupérer la liste des activités via les destinations du voyage
-  const { data: activities } = useQuery<Activity[], Error>({
-    queryKey: ["activities", tripId],
-    queryFn: async () => {
-      // D'abord, récupérer les destinations du voyage
-      const { data: destinations, error: destError } = await supabase
-        .from("destinations")
-        .select("id")
-        .eq("trip_id", tripId);
-
-      if (destError) {
-        console.error("Erreur lors de la récupération des destinations:", destError);
-        return [];
-      }
-
-      if (!destinations?.length) return [];
-
-      // Ensuite, récupérer toutes les activités des destinations
-      const destinationIds = destinations.map(dest => dest.id);
-      const { data, error } = await supabase
-        .from("activities")
-        .select("id, title, datetime")
-        .in("destination_id", destinationIds)
-        .order("datetime", { ascending: true });
-        
-      if (error) {
-        console.error("Erreur lors de la récupération des activités:", error);
-        return [];
-      }
-      
-      return data || [];
-    },
-    enabled: !!tripId
-  });
-
-  // Pré-remplir le formulaire en mode édition
-  useEffect(() => {
-    if (existingExpense) {
-      setFormData({
-        title: existingExpense.title,
-        amount: existingExpense.amount.toString(),
-        user_paid_by: existingExpense.user_paid_by,
-        date: new Date(existingExpense.date).toISOString().slice(0, 10),
-        activity_id: existingExpense.activity_id?.toString() || ""
+export const ExpenseForm = ({ 
+  tripId,
+  expenseId, 
+  activities,
+  onClose, 
+  onSubmit,
+  isSubmitting 
+}: ExpenseFormProps) => {
+  const {
+    formData,
+    formErrors,
+    isEditMode,
+    handleChange,
+    handleSubmit,
+    setSubmitError
+  } = useExpenseForm({
+    tripId,
+    expenseId,
+    activities,
+    onSubmit: (data: ExpenseFormData) => {
+      onSubmit({
+        expenseId,
+        data
       });
-    }
-  }, [existingExpense]);
-
-  // Récupérer le display_name de l'utilisateur
-  const { data: userData } = useQuery({
-    queryKey: ["user-display-name", user?.id],
-    queryFn: async () => {
-      if (!user?.id) return null;
-      const { data, error } = await supabase
-        .from("users")
-        .select("display_name")
-        .eq("id", user.id)
-        .single();
-      
-      if (error) throw error;
-      return data;
     },
-    enabled: !!user?.id
+    onClose
   });
-
-  // Mettre à jour user_paid_by avec le display_name
-  useEffect(() => {
-    if (userData?.display_name && !existingExpense) {
-      setFormData(prev => ({
-        ...prev,
-        user_paid_by: userData.display_name
-      }));
-    }
-  }, [userData, existingExpense]);
-
-  // Gestion des changements dans le formulaire
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    
-    // Si c'est le champ activity_id qui change
-    if (name === 'activity_id') {
-      const selectedActivity = activities?.find(activity => activity.id.toString() === value);
-      if (selectedActivity) {
-        setFormData(prev => ({ 
-          ...prev, 
-          [name]: value,
-          date: new Date(selectedActivity.datetime).toISOString().slice(0, 10)
-        }));
-      } else {
-        setFormData(prev => ({ ...prev, [name]: value }));
-      }
-    } else {
-      setFormData(prev => ({ ...prev, [name]: value }));
-    }
-    
-    // Effacer l'erreur si l'utilisateur commence à corriger
-    if (formErrors[name]) {
-      setFormErrors(prev => {
-        const newErrors = { ...prev };
-        delete newErrors[name];
-        return newErrors;
-      });
-    }
-  };
-
-  // Validation du formulaire
-  const validateForm = () => {
-    const errors: Record<string, string> = {};
-    
-    if (!formData.title.trim()) {
-      errors.title = "Le titre est requis.";
-    }
-    
-    if (!formData.amount || isNaN(parseFloat(formData.amount)) || parseFloat(formData.amount) <= 0) {
-      errors.amount = "Veuillez entrer un montant valide.";
-    }
-    
-    if (!formData.user_paid_by.trim()) {
-      errors.user_paid_by = "Le nom de la personne ayant payé est requis.";
-    }
-      if (!formData.activity_id) {
-      errors.activity_id = "L'activité est requise.";
-    }
-    
-    setFormErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
-
-  // Mutation pour ajouter/modifier une dépense
-  const expenseMutation = useMutation({
-    mutationFn: async (data: Expense) => {
-      if (expenseId) {
-        // Mise à jour d'une dépense existante
-        const { error } = await supabase
-          .from("expenses")
-          .update(data)
-          .eq("id", expenseId);
-        
-        if (error) throw error;
-        return data;
-      } else {
-        // Création d'une nouvelle dépense
-        const { data: newExpense, error } = await supabase
-          .from("expenses")
-          .insert([data])
-          .select();
-        
-        if (error) throw error;
-        return newExpense?.[0];
-      }
-    },
-    onSuccess: () => {
-      onComplete();
-      // Invalider le cache pour recharger la liste des dépenses
-      queryClient.invalidateQueries({ queryKey: ["expenses", tripId] });
-    },
-    onError: (error) => {
-      console.error("Erreur lors de l'enregistrement:", error);
-      setFormErrors(prev => ({
-        ...prev,
-        submit: "Une erreur est survenue lors de l'enregistrement."
-      }));
-      setIsSubmitting(false);
-    }
-  });
-
-  // Soumission du formulaire
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (validateForm()) {
-      setIsSubmitting(true);
-      
-      const expenseData: Expense = {
-        trip_id: tripId,
-        title: formData.title.trim(),
-        amount: parseFloat(formData.amount),
-        user_paid_by: formData.user_paid_by.trim(),
-        date: new Date(formData.date).toISOString(),
-        activity_id: parseInt(formData.activity_id)
-      };
-      
-      expenseMutation.mutate(expenseData);
-    }
-  };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      {/* Titre de la dépense */}
-      <div>
-        <label htmlFor="title" className="block text-gray-300 mb-2">
-          Titre de la dépense
-        </label>
-        <input
-          type="text"
-          id="title"
-          name="title"
-          value={formData.title}
-          onChange={handleChange}
-          placeholder="Ex: Restaurant, Hébergement, Transport"
-          className={`w-full p-2 bg-gray-800 border rounded ${
-            formErrors.title ? "border-red-500" : "border-gray-600"
-          }`}
-        />
-        {formErrors.title && (
-          <p className="text-red-500 text-sm mt-1">{formErrors.title}</p>
-        )}
-      </div>
-
-      {/* Activité liée */}
-      <div>
-        <label htmlFor="activity_id" className="block text-gray-300 mb-2">
-          Activité liée
-        </label>
-        <select
-          id="activity_id"
-          name="activity_id"
-          value={formData.activity_id}
-          onChange={handleChange}
-          className={`w-full p-2 bg-gray-800 border rounded ${
-            formErrors.activity_id ? "border-red-500" : "border-gray-600"
-          }`}
+    <div className="bg-gray-700 rounded-lg p-6 mb-6">
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-xl font-semibold">
+          {isEditMode ? "Modifier la dépense" : "Ajouter une dépense"}
+        </h3>
+        <button 
+          onClick={onClose}
+          className="text-gray-400 hover:text-white transition"
         >
-          <option value="">Sélectionner une activité</option>
-          {activities?.map((activity) => (
-            <option key={activity.id} value={activity.id}>
-              {activity.title}
-            </option>
-          ))}
-        </select>
-        {formErrors.activity_id && (
-          <p className="text-red-500 text-sm mt-1">{formErrors.activity_id}</p>
-        )}
+          <FaTimes />
+        </button>
       </div>
 
-      {/* Montant */}
-      <div>
-        <label htmlFor="amount" className="block text-gray-300 mb-2">
-          Montant
-        </label>
-        <input
-          type="number"
-          id="amount"
-          name="amount"
-          step="0.01"
-          value={formData.amount}
-          onChange={handleChange}
-          placeholder="Montant de la dépense"
-          className={`w-full p-2 bg-gray-800 border rounded ${
-            formErrors.amount ? "border-red-500" : "border-gray-600"
-          }`}
-        />
-        {formErrors.amount && (
-          <p className="text-red-500 text-sm mt-1">{formErrors.amount}</p>
-        )}
-      </div>
+      <form onSubmit={handleSubmit}>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+          {/* Titre de la dépense */}
+          <div>
+            <label className="block text-gray-300 mb-2" htmlFor="title">
+              Titre de la dépense
+            </label>
+            <input
+              type="text"
+              id="title"
+              name="title"
+              value={formData.title}
+              onChange={handleChange}
+              placeholder="Ex: Restaurant, Hébergement, Transport"
+              className={`w-full p-2 bg-gray-800 border rounded ${
+                formErrors.title ? "border-red-500" : "border-gray-600"
+              }`}
+            />
+            {formErrors.title && (
+              <p className="text-red-500 text-sm mt-1">{formErrors.title}</p>
+            )}
+          </div>
 
-      {/* Personne ayant payé */}
-      <div>
-        <label htmlFor="user_paid_by" className="block text-gray-300 mb-2">
-          Payé par
-        </label>
-        <input
-          type="text"
-          id="user_paid_by"
-          name="user_paid_by"
-          value={formData.user_paid_by}
-          readOnly
-          className="w-full p-2 bg-gray-700 border rounded border-gray-600 cursor-not-allowed"
-        />
-      </div>      {/* Message d'erreur général */}
-      {formErrors.submit && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
-          <span className="block sm:inline">{formErrors.submit}</span>
+          {/* Montant */}
+          <div>
+            <label className="block text-gray-300 mb-2" htmlFor="amount">
+              Montant
+            </label>
+            <input
+              type="number"
+              id="amount"
+              name="amount"
+              step="0.01"
+              value={formData.amount}
+              onChange={handleChange}
+              placeholder="Montant de la dépense"
+              className={`w-full p-2 bg-gray-800 border rounded ${
+                formErrors.amount ? "border-red-500" : "border-gray-600"
+              }`}
+            />
+            {formErrors.amount && (
+              <p className="text-red-500 text-sm mt-1">{formErrors.amount}</p>
+            )}
+          </div>
         </div>
-      )}
 
-      {/* Boutons d'action */}
-      <div className="flex justify-end space-x-3">
-        <button
-          type="button"
-          onClick={onComplete}
-          className="px-4 py-2 border border-gray-500 text-gray-300 rounded hover:bg-gray-600"
-        >
-          Annuler
-        </button>
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className={`px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 ${
-            isSubmitting ? "opacity-50 cursor-not-allowed" : ""
-          }`}
-        >
-          {isSubmitting ? "Enregistrement..." : expenseId ? "Mettre à jour" : "Ajouter"}
-        </button>
-      </div>
-    </form>
+        {/* Activité liée */}
+        <div className="mb-4">
+          <label className="block text-gray-300 mb-2" htmlFor="activity_id">
+            Activité liée
+          </label>
+          <select
+            id="activity_id"
+            name="activity_id"
+            value={formData.activity_id}
+            onChange={handleChange}
+            className={`w-full p-2 bg-gray-800 border rounded ${
+              formErrors.activity_id ? "border-red-500" : "border-gray-600"
+            }`}
+            disabled={activities.length === 0}
+          >
+            {activities.length === 0 ? (
+              <option value="">Aucune activité disponible</option>
+            ) : (
+              <>
+                <option value="">Sélectionner une activité</option>
+                {activities.map((activity) => (
+                  <option key={activity.id} value={activity.id}>
+                    {activity.title}
+                  </option>
+                ))}
+              </>
+            )}
+          </select>
+          {formErrors.activity_id && (
+            <p className="text-red-500 text-sm mt-1">{formErrors.activity_id}</p>
+          )}
+          {activities.length === 0 && (
+            <p className="text-yellow-500 text-sm mt-1">
+              Ajoutez d'abord des activités à votre voyage.
+            </p>
+          )}
+        </div>
+
+        {/* Personne ayant payé */}
+        <div className="mb-4">
+          <label className="block text-gray-300 mb-2" htmlFor="user_paid_by">
+            Payé par
+          </label>
+          <input
+            type="text"
+            id="user_paid_by"
+            name="user_paid_by"
+            value={formData.user_paid_by}
+            readOnly
+            className="w-full p-2 bg-gray-700 border rounded border-gray-600 cursor-not-allowed"
+          />
+        </div>
+
+        {/* Message d'erreur général */}
+        {formErrors.submit && (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+            <span className="block sm:inline">{formErrors.submit}</span>
+          </div>
+        )}
+
+        {/* Boutons d'action */}
+        <div className="flex justify-end space-x-3">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 border border-gray-500 text-gray-300 rounded hover:bg-gray-600"
+          >
+            Annuler
+          </button>
+          <button
+            type="submit"
+            disabled={isSubmitting || activities.length === 0}
+            className={`px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 ${
+              (isSubmitting || activities.length === 0) ? "opacity-50 cursor-not-allowed" : ""
+            }`}
+          >
+            {isSubmitting ? "Enregistrement..." : isEditMode ? "Mettre à jour" : "Ajouter"}
+          </button>
+        </div>
+      </form>
+    </div>
   );
 };
