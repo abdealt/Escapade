@@ -26,7 +26,6 @@ const fetchTrips = async (userId: string, showAll: boolean = false): Promise<Tri
         const today = new Date().toISOString();
         query
             .lte('start_date', today)
-            .gt('end_date', today);
     }
 
     const { data, error } = await query;
