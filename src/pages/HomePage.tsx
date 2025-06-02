@@ -4,7 +4,7 @@ import { BsCalendarEvent, BsCurrencyEuro } from "react-icons/bs";
 import { FaChevronDown, FaChevronUp, FaEye, FaPlane, FaPlus } from "react-icons/fa";
 import { MdLocationOn, MdTrendingUp } from "react-icons/md";
 import { Link } from "react-router";
-import { SharedTrips } from "../features/trips/components/SharedTrips";
+import { SharedTrips } from "../features/sharedTrips/components/SharedTrips";
 import { ShowTrips } from "../features/trips/components/ShowTrips";
 import { CreateTrip } from "../features/trips/components/TripForm";
 import { supabase } from "../supabase-client";

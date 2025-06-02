@@ -366,109 +366,79 @@ export function Friends() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-8">Gestion des amis</h1>
+      <div className="bg-white p-6 rounded-lg shadow-md mb-8">
+        <h2 className="text-2xl font-bold text-gray-600 mb-4">Mes amis</h2>
 
-      {/* Formulaire d'ajout d'ami */}
-      <div className="bg-gray-800 p-6 rounded-lg mb-8">
-        <h2 className="text-xl font-semibold mb-4">Ajouter un ami</h2>
-        <form onSubmit={sendFriendRequest} className="flex gap-4">
+        <form onSubmit={sendFriendRequest} className="flex gap-4 mb-4">
           <input
             type="email"
+            placeholder="Email de l'ami"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="Adresse email de votre ami"
-            className="flex-1 p-2 rounded bg-gray-700 text-white"
-            required
-            disabled={isLoading}
+            className="flex-1 p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
           <button
             type="submit"
-            className={`px-4 py-2 rounded ${isLoading 
-              ? 'bg-gray-600 cursor-not-allowed' 
-              : 'bg-blue-600 hover:bg-blue-700'}`}
             disabled={isLoading}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg shadow hover:bg-blue-700 transition"
           >
-            {isLoading ? 'Envoi en cours...' : 'Envoyer une demande'}
+            Ajouter
           </button>
         </form>
+
+        {error && <div className="text-red-600 font-medium mb-2">{error}</div>}
+        {success && <div className="text-green-600 font-medium mb-2">{success}</div>}
       </div>
 
-      {/* Messages d'erreur et de succès */}
-      {error && (
-        <div className="bg-red-600 text-white p-4 rounded mb-4">
-          {error}
-        </div>
-      )}
-      {success && (
-        <div className="bg-green-600 text-white p-4 rounded mb-4">
-          {success}
-        </div>
-      )}
-
-      {/* Liste des demandes en attente */}
-      <div className="bg-gray-800 p-6 rounded-lg mb-8">
-        <h2 className="text-xl font-semibold mb-4">Demandes d'amis en attente</h2>
+      {/* Demandes d'amis en attente */}
+      <div className="mb-8">
+        <h3 className="text-xl font-semibold text-gray-700 mb-4">Demandes en attente</h3>
         {pendingRequests.length === 0 ? (
-          <p className="text-gray-400">Aucune demande en attente</p>
+          <div className="text-gray-500">Aucune demande en attente.</div>
         ) : (
-          <ul className="space-y-4">
+          <div className="space-y-4">
             {pendingRequests.map((request) => (
-              <li key={request.id} className="flex items-center justify-between bg-gray-700 p-4 rounded">
-                <span>{request.requester?.email || request.requester_id}</span>
-                <div className="space-x-2">
+              <div key={request.id} className="bg-white p-6 rounded-lg shadow-md flex justify-between items-center">
+                <div className="text-gray-800">{request.requester?.email}</div>
+                <div className="flex gap-2">
                   <button
                     onClick={() => acceptRequest(request.id)}
-                    className={`px-4 py-2 rounded ${isLoading 
-                      ? 'bg-gray-600 cursor-not-allowed' 
-                      : 'bg-green-600 hover:bg-green-700'}`}
                     disabled={isLoading}
+                    className="bg-green-600 text-white px-3 py-1 rounded-lg hover:bg-green-700 transition"
                   >
                     Accepter
                   </button>
                   <button
                     onClick={() => declineRequest(request.id)}
-                    className={`px-4 py-2 rounded ${isLoading 
-                      ? 'bg-gray-600 cursor-not-allowed' 
-                      : 'bg-red-600 hover:bg-red-700'}`}
                     disabled={isLoading}
+                    className="bg-red-600 text-white px-3 py-1 rounded-lg hover:bg-red-700 transition"
                   >
                     Refuser
                   </button>
                 </div>
-              </li>
+              </div>
             ))}
-          </ul>
+          </div>
         )}
       </div>
 
       {/* Liste des amis */}
-      <div className="bg-gray-800 p-6 rounded-lg">
-        <h2 className="text-xl font-semibold mb-4">Mes amis</h2>
+      <div>
+        <h3 className="text-xl font-semibold text-gray-700 mb-4">Mes amis</h3>
         {friends.length === 0 ? (
-          <p className="text-gray-400">Aucun ami pour le moment</p>
+          <div className="text-gray-500">Vous n'avez pas encore d'amis.</div>
         ) : (
-          <ul className="space-y-4">
-            {friends.map((friend) => {
-              const isRequester = friend.requester_id === user.id;
-              const friendEmail = isRequester ? friend.receiver?.email : friend.requester?.email;
-              const friendId = isRequester ? friend.receiver_id : friend.requester_id;
-              
+          <div className="space-y-4">
+            {friends.map((friend, index) => {
+              const otherUser =
+                friend.requester?.id === user?.id ? friend.receiver : friend.requester;
               return (
-                <li key={friend.id} className="flex items-center justify-between bg-gray-700 p-4 rounded">
-                  <span>{friendEmail || friendId}</span>
-                  <button
-                    onClick={() => removeFriend(friend.id)}
-                    className={`px-4 py-2 rounded ${isLoading 
-                      ? 'bg-gray-600 cursor-not-allowed' 
-                      : 'bg-red-600 hover:bg-red-700'}`}
-                    disabled={isLoading}
-                  >
-                    Supprimer
-                  </button>
-                </li>
+                <div key={index} className="bg-white p-6 rounded-lg shadow-md">
+                  <div className="text-gray-800">{otherUser?.email}</div>
+                </div>
               );
             })}
-          </ul>
+          </div>
         )}
       </div>
     </div>
