@@ -6,10 +6,14 @@ import { Login } from './features/auth/components/LoginForm.tsx';
 import { TripDetails } from './features/trips/components/TripDetails.tsx';
 import { CreateTrip } from './features/trips/components/TripForm.tsx';
 import { CommentsList } from './pages/CommentsPage.tsx';
+import { ContactPage } from './pages/ContactPage.tsx';
 import { ExpensesPage } from './pages/ExpensesPage.tsx';
 import { Friends } from './pages/FriendsPage.tsx';
 import { Home } from './pages/HomePage.tsx';
+import { PrivacyPage } from './pages/PrivacyPage.tsx';
 import { ProfilePage } from './pages/ProfilePage';
+import { RGPDPage } from './pages/RGPDPage.tsx';
+import { TermsPage } from './pages/TermsPage.tsx';
 import { TripsList } from './pages/TripsPage.tsx';
 
 function App() {
@@ -59,15 +63,19 @@ function App() {
             <ProtectedRoute>
               <CommentsList />
             </ProtectedRoute>
-          } />
-          <Route path="/profile" element={
+          } />          <Route path="/profile" element={
             <ProtectedRoute>
               <ProfilePage />
             </ProtectedRoute>
           } />
+            {/* Pages publiques */}
+          <Route path="/contact" element={<ContactPage />} />
+          <Route path="/privacy" element={<PrivacyPage />} />
+          <Route path="/terms" element={<TermsPage />} />
+          <Route path="/rgpd" element={<RGPDPage />} />
 
           {/* Redirection vers la page de login si la route n'existe pas */}
-          <Route path="*" element={<Navigate to="/login" replace />} />        </Routes>
+          <Route path="*" element={<Navigate to="/login" replace />} /></Routes>
       </div>
       <Footer />
     </div>

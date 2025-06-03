@@ -1,4 +1,5 @@
-import { FaApple, FaFacebook, FaGooglePlay, FaTiktok, FaTwitter } from "react-icons/fa";
+import { FaApple, FaFacebook, FaGooglePlay, FaTiktok } from "react-icons/fa";
+import { FaXTwitter } from "react-icons/fa6";
 import { Link } from "react-router";
 
 export const Footer = () => {
@@ -34,12 +35,12 @@ export const Footer = () => {
                 <FaFacebook className="text-2xl" />
               </a>
               <a
-                href="https://twitter.com"
+                href="https://x.com"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="hover:text-blue-400 transition-colors"
               >
-                <FaTwitter className="text-2xl" />
+                <FaXTwitter className="text-2xl" />
               </a>
               <a
                 href="https://tiktok.com"
