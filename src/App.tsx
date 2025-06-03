@@ -1,4 +1,5 @@
 import { Navigate, Route, Routes } from 'react-router';
+import { Footer } from './components/Footer';
 import { Navbar } from './components/Navbar';
 import { ProtectedRoute } from './context/ProtectedRoute';
 import { Login } from './features/auth/components/LoginForm.tsx';
@@ -66,9 +67,9 @@ function App() {
           } />
 
           {/* Redirection vers la page de login si la route n'existe pas */}
-          <Route path="*" element={<Navigate to="/login" replace />} />
-        </Routes>
+          <Route path="*" element={<Navigate to="/login" replace />} />        </Routes>
       </div>
+      <Footer />
     </div>
   );
 }
