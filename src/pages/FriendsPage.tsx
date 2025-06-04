@@ -309,10 +309,7 @@ export function Friends() {
       // 2. Mettre à jour le statut
       const { error: updateError } = await supabase
         .from('friend_requests')
-        .update({ 
-          status: 'declined',
-          updated_at: new Date().toISOString()
-        })
+        .delete()
         .eq('id', requestId);
 
       if (updateError) throw updateError;
@@ -435,7 +432,14 @@ export function Friends() {
               return (
                 <div key={index} className="bg-white p-6 rounded-lg shadow-md">
                   <div className="text-gray-800">{otherUser?.email}</div>
-                </div>
+                    <button
+                      onClick={() => removeFriend(friend.id)}
+                      disabled={isLoading}
+                      className="bg-red-600 text-white px-3 py-1 rounded-lg hover:bg-red-700 transition ml-4"
+                    >
+                    Supprimer
+                    </button>
+                  </div>
               );
             })}
           </div>
