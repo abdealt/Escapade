@@ -25,7 +25,8 @@ interface Trip {
 
 interface Friend {
   id: string;
-  email: string;
+  email?: string; // L'email peut être optionnelle si non disponible
+  display_name: string;
 }
 
 interface FriendRequest {
@@ -33,8 +34,8 @@ interface FriendRequest {
   requester_id: string;
   receiver_id: string;
   status: string;
-  requester?: { id: string; email: string };
-  receiver?: { id: string; email: string };
+  requester?: { id: string; email: string ; display_name: string };
+  receiver?: { id: string; email: string ; display_name: string};
 }
 
 // Fonction pour récupérer les détails d'un voyage
@@ -85,16 +86,15 @@ export const TripDetails = () => {
     if (!user) return;
 
     const { data: friendRequests, error } = await supabase
-      .from('friend_requests')
-      .select(`
+      .from('friend_requests')      .select(`
         *,
         requester:users!friend_requests_requester_id_fkey (
           id,
-          email
+          display_name
         ),
         receiver:users!friend_requests_receiver_id_fkey (
           id,
-          email
+          display_name
         )
       `)
       .eq('status', 'accepted')
@@ -108,10 +108,9 @@ export const TripDetails = () => {
     // Transformer les demandes d'amis en liste d'amis
     const friendsList = friendRequests.map((request: FriendRequest) => {
       const isSender = request.requester_id === user.id;
-      const friendData = isSender ? request.receiver : request.requester;
-      return {
+      const friendData = isSender ? request.receiver : request.requester;      return {
         id: isSender ? request.receiver_id : request.requester_id,
-        email: friendData?.email || ''
+        display_name: friendData?.display_name || friendData?.email || "Ami sans nom",
       };
     });
 
@@ -424,8 +423,7 @@ export const TripDetails = () => {
             >
               <option value="">Sélectionner un ami</option>
               {friends.map((friend) => (
-                <option key={friend.id} value={friend.id}>
-                  {friend.email}
+                <option key={friend.id} value={friend.id}>                  {friend.display_name}
                 </option>
               ))}
             </select>
