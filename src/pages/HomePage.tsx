@@ -95,7 +95,7 @@ export const Home = () => {
           id,
           name,
           start_date,
-          destinations!inner (city),
+          destinations (city),
           trip_participants (count)
         `)
         .eq('created_by', user.id)
@@ -110,8 +110,8 @@ export const Home = () => {
         name: trip.name,
         start_date: trip.start_date,
         city: Array.isArray(trip.destinations) 
-          ? trip.destinations[0]?.city || 'Non spécifié'
-          : (trip.destinations as { city: string })?.city || 'Non spécifié',
+          ? trip.destinations[0]?.city || 'Aucune destination saisie'
+          : (trip.destinations as { city: string })?.city || 'Aucune destination saisie',
         participants: Array.isArray(trip.trip_participants) 
           ? trip.trip_participants.length 
           : (trip.trip_participants as { count?: number })?.count || 0
