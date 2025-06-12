@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FaEdit, FaPlus, FaTrash } from "react-icons/fa";
+import { FaEdit, FaMinus, FaPlus, FaTrash } from "react-icons/fa";
 import { useCommentActivities } from "../hooks/useCommentActivities";
 import { CommentActivity } from "../services/commentActivityService";
 import { CommentsActivitieForm } from "./CommentsActivitiesForm";
@@ -101,7 +101,7 @@ export const CommentsActivitiesList = ({ tripId, activityId }: CommentsListProps
       {/* Sélecteur d'activité */}
       <div className="bg-gray-700 p-4 rounded-lg mb-6">
         <label className="block text-sm font-medium text-gray-300 mb-2">
-          Sélectionner une activité
+          Sélectionner une activité à laquelle ajouter un commentaire
         </label>
         <select
           value={selectedActivityId || ""}
@@ -131,7 +131,7 @@ export const CommentsActivitiesList = ({ tripId, activityId }: CommentsListProps
               onClick={() => setShowAddForm(!showAddForm)}
               className="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded-lg text-white transition"
             >
-              <FaPlus /> {showAddForm ? "Masquer le formulaire" : "Ajouter un commentaire"}
+              {showAddForm ? <FaMinus /> : <FaPlus />} {showAddForm ? "Masquer le formulaire" : "Ajouter un commentaire"}
             </button>
           )}
         </div>
