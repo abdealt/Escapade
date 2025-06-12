@@ -374,7 +374,6 @@ export const TripDetails = () => {
               <div className="bg-gray-700 p-4 rounded-lg">
                 <h2 className="text-xl font-semibold mb-4">Commentaires</h2>
                 <div className="grid grid-cols-1 md:grid-cols gap-4">
-                    <h3 className="text-lg font-medium mb-2">Activités</h3>
                     <CommentsActivitiesList tripId={tripId} />
                 </div>
               </div>

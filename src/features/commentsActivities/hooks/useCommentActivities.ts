@@ -7,28 +7,32 @@ export const useCommentActivities = (tripId: string, selectedActivityId?: number
   // Query pour récupérer les activités
   const activitiesQuery = useQuery({
     queryKey: ["activities", tripId],
-    queryFn: commentActivityService.fetchActivities,
+    queryFn: () => commentActivityService.fetchActivities(tripId),
     enabled: !!tripId
   });
 
-  // Query pour récupérer les commentaires d'une activité spécifique
+  // Query pour récupérer tous les commentaires
   const commentsQuery = useQuery({
-    queryKey: ["comments", selectedActivityId],
-    queryFn: () => commentActivityService.fetchComments(selectedActivityId!),
-    enabled: !!selectedActivityId
+    queryKey: ["tripComments", tripId],
+    queryFn: () => Promise.all(
+      (activitiesQuery.data || []).map(activity =>
+        commentActivityService.fetchComments(activity.id)
+      )
+    ).then(results => results.flat()),
+    enabled: !!tripId && !!activitiesQuery.data
   });
 
   // Query pour récupérer le profil utilisateur
   const userProfileQuery = useQuery({
     queryKey: ["userProfile"],
-    queryFn: commentActivityService.fetchUserProfile
+    queryFn: () => commentActivityService.fetchUserProfile()
   });
 
   // Mutation pour créer un commentaire
   const createCommentMutation = useMutation({
-    mutationFn: commentActivityService.createComment,
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["comments", variables.activity_id] });
+    mutationFn: (data: CommentActivityFormData) => commentActivityService.createComment(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tripComments", tripId] });
     }
   });
 
@@ -36,18 +40,16 @@ export const useCommentActivities = (tripId: string, selectedActivityId?: number
   const updateCommentMutation = useMutation({
     mutationFn: ({ id, data }: { id: number; data: Partial<CommentActivityFormData> }) =>
       commentActivityService.updateComment(id, data),
-    onSuccess: (updatedComment) => {
-      queryClient.invalidateQueries({ queryKey: ["comments", updatedComment.activity_id] });
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tripComments", tripId] });
     }
   });
 
   // Mutation pour supprimer un commentaire
   const deleteCommentMutation = useMutation({
-    mutationFn: commentActivityService.deleteComment,
+    mutationFn: (commentId: number) => commentActivityService.deleteComment(commentId),
     onSuccess: () => {
-      if (selectedActivityId) {
-        queryClient.invalidateQueries({ queryKey: ["comments", selectedActivityId] });
-      }
+      queryClient.invalidateQueries({ queryKey: ["tripComments", tripId] });
     }
   });
 
@@ -79,7 +81,9 @@ export const useCommentActivities = (tripId: string, selectedActivityId?: number
   return {
     // Data
     activities: activitiesQuery.data,
-    comments: commentsQuery.data,
+    comments: commentsQuery.data?.filter(comment => 
+      !selectedActivityId || comment.activity_id === selectedActivityId
+    ),
     userProfile: userProfileQuery.data,
     
     // Loading states
@@ -93,8 +97,8 @@ export const useCommentActivities = (tripId: string, selectedActivityId?: number
     
     // Actions
     createOrUpdateComment,
-    deleteComment: deleteCommentMutation.mutate,
-    refetchComments: commentsQuery.refetch,
+    deleteComment: (commentId: number) => deleteCommentMutation.mutate(commentId),
+    refetchComments: () => commentsQuery.refetch(),
     
     // Mutation states
     isSubmitting: createCommentMutation.isPending || updateCommentMutation.isPending,

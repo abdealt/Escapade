@@ -22,10 +22,26 @@ export interface CommentActivityFormData {
 
 export const commentActivityService = {
   // Récupérer les activités disponibles
-  async fetchActivities(): Promise<Activity[]> {
+  async fetchActivities(tripId: string): Promise<Activity[]> {
+    const { data: destinations, error: destError } = await supabase
+      .from("destinations")
+      .select("id")
+      .eq("trip_id", tripId);
+    
+    if (destError) {
+      throw new Error(destError.message);
+    }
+
+    if (!destinations || destinations.length === 0) {
+      return [];
+    }
+
+    const destinationIds = destinations.map(dest => dest.id);
+
     const { data, error } = await supabase
       .from("activities")
       .select("id, title")
+      .in("destination_id", destinationIds)
       .order("datetime", { ascending: true });
       
     if (error) {
