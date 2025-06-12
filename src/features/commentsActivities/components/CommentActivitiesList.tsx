@@ -1,12 +1,12 @@
 import { useState } from "react";
-import { FaEdit, FaTrash } from "react-icons/fa";
+import { FaEdit, FaPlus, FaTrash } from "react-icons/fa";
 import { useCommentActivities } from "../hooks/useCommentActivities";
 import { CommentActivity } from "../services/commentActivityService";
 import { CommentsActivitieForm } from "./CommentsActivitiesForm";
 
 interface CommentsListProps {
   tripId: string;
-  activityId?: number; // Optionnel, si on veut préfiltrer pour une activité spécifique
+  activityId?: number;
 }
 
 export const CommentsActivitiesList = ({ tripId, activityId }: CommentsListProps) => {
@@ -14,6 +14,7 @@ export const CommentsActivitiesList = ({ tripId, activityId }: CommentsListProps
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [commentToDelete, setCommentToDelete] = useState<number | null>(null);
   const [selectedActivityId, setSelectedActivityId] = useState<number | null>(activityId || null);
+  const [showAddForm, setShowAddForm] = useState(false);
 
   const {
     activities,
@@ -30,10 +31,12 @@ export const CommentsActivitiesList = ({ tripId, activityId }: CommentsListProps
   const handleActivityChange = (activityId: number | null) => {
     setSelectedActivityId(activityId);
     setEditingComment(null);
+    setShowAddForm(false);
   };
 
   const handleEdit = (comment: CommentActivity) => {
     setEditingComment(comment);
+    setShowAddForm(true);
   };
 
   const handleDelete = async () => {
@@ -51,6 +54,11 @@ export const CommentsActivitiesList = ({ tripId, activityId }: CommentsListProps
   const confirmDelete = (commentId: number) => {
     setCommentToDelete(commentId);
     setShowDeleteModal(true);
+  };
+
+  const handleCommentAdded = () => {
+    refetchComments();
+    setShowAddForm(false);
   };
 
   // Formatage de la date
@@ -109,88 +117,105 @@ export const CommentsActivitiesList = ({ tripId, activityId }: CommentsListProps
         </select>
       </div>
 
-      {/* Afficher le formulaire de commentaires uniquement si une activité est sélectionnée */}
-      {selectedActivityId && (
-        <div className="mb-6">
-          <h3 className="text-lg font-medium mb-3">
-            Ajouter un commentaire pour "{getActivityTitle(selectedActivityId)}"
+      {/* Liste des commentaires et bouton d'ajout */}
+      <div className="mt-6">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-medium">
+            {selectedActivityId 
+              ? `Commentaires pour "${getActivityTitle(selectedActivityId)}"`
+              : "Tous les commentaires"
+            }
           </h3>
-          <CommentsActivitieForm 
-            tripId={tripId} 
-            onCommentAdded={() => refetchComments()} 
-            editingComment={editingComment} 
-            setEditingComment={setEditingComment}
-            selectedActivityId={selectedActivityId}
-          />
+          {selectedActivityId && (
+            <button
+              onClick={() => setShowAddForm(!showAddForm)}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded-lg text-white transition"
+            >
+              <FaPlus /> {showAddForm ? "Masquer le formulaire" : "Ajouter un commentaire"}
+            </button>
+          )}
         </div>
-      )}
 
-      {/* Liste des commentaires */}
-      <div className="mt-6 space-y-4">
-        {!selectedActivityId ? (
-          <div className="bg-gray-700 p-4 rounded-lg">
-            <p className="text-gray-300">Veuillez sélectionner une activité pour voir les commentaires.</p>
+        {/* Formulaire d'ajout de commentaire */}
+        {selectedActivityId && showAddForm && (
+          <div className="mb-6">
+            <CommentsActivitieForm 
+              tripId={tripId} 
+              onCommentAdded={handleCommentAdded} 
+              editingComment={editingComment} 
+              setEditingComment={setEditingComment}
+              selectedActivityId={selectedActivityId}
+            />
           </div>
-        ) : (
-          <>
-            <h3 className="text-lg font-medium">
-              Commentaires pour "{getActivityTitle(selectedActivityId)}"
-            </h3>
-            
-            {isLoadingComments && (
-              <div className="flex items-center justify-center h-48">
-                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
-              </div>
-            )}
-            
-            {commentsError && (
-              <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
-                <strong className="font-bold">Erreur: </strong>
-                <span className="block sm:inline">{commentsError.message}</span>
-              </div>
-            )}
+        )}
+        
+        {/* Liste des commentaires */}
+        <div className="space-y-4">
+          {isLoadingComments && (
+            <div className="flex items-center justify-center h-48">
+              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+            </div>
+          )}
+          
+          {commentsError && (
+            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+              <strong className="font-bold">Erreur: </strong>
+              <span className="block sm:inline">{commentsError.message}</span>
+            </div>
+          )}
 
-            {comments && comments.length > 0 ? (
-              comments.map((comment) => (
-                <div key={comment.id} className="bg-gray-700 rounded-lg p-4">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <div className="mb-1 text-sm text-blue-300">
-                        {comment.user_comment}
-                      </div>
-                      <p className="text-gray-300 mb-2">{comment.content}</p>
+          {comments && comments.length > 0 ? (
+            comments.map((comment) => (
+              <div key={comment.id} className="bg-gray-700 rounded-lg p-4">
+                <div className="flex justify-between items-start">
+                  <div className="flex-grow">
+                    <div className="mb-1 text-sm text-blue-300">
+                      {comment.user_comment}
+                    </div>
+                    <p className="text-gray-300 mb-2">{comment.content}</p>
+                    <div className="flex justify-between items-center">
                       <p className="text-sm text-gray-400">
                         Le {formatDate(comment.created_at)}
                       </p>
-                    </div>
-                    <div className="flex space-x-2">
-                      <button 
-                        onClick={() => handleEdit(comment)}
-                        className="p-1.5 bg-blue-500 rounded-full hover:bg-blue-600 transition"
-                        title="Modifier ce commentaire"
-                        disabled={isDeleting}
-                      >
-                        <FaEdit className="text-white text-sm" />
-                      </button>
-                      <button 
-                        onClick={() => confirmDelete(comment.id)}
-                        className="p-1.5 bg-red-500 rounded-full hover:bg-red-600 transition"
-                        title="Supprimer ce commentaire"
-                        disabled={isDeleting}
-                      >
-                        <FaTrash className="text-white text-sm" />
-                      </button>
+                      {!selectedActivityId && (
+                        <p className="text-sm text-gray-400">
+                          Pour: {getActivityTitle(comment.activity_id)}
+                        </p>
+                      )}
                     </div>
                   </div>
+                  <div className="flex space-x-2 ml-4">
+                    <button 
+                      onClick={() => handleEdit(comment)}
+                      className="p-1.5 bg-blue-500 rounded-full hover:bg-blue-600 transition"
+                      title="Modifier ce commentaire"
+                      disabled={isDeleting}
+                    >
+                      <FaEdit className="text-white text-sm" />
+                    </button>
+                    <button 
+                      onClick={() => confirmDelete(comment.id)}
+                      className="p-1.5 bg-red-500 rounded-full hover:bg-red-600 transition"
+                      title="Supprimer ce commentaire"
+                      disabled={isDeleting}
+                    >
+                      <FaTrash className="text-white text-sm" />
+                    </button>
+                  </div>
                 </div>
-              ))
-            ) : (
-              <div className="bg-gray-700 p-4 rounded-lg">
-                <p className="text-gray-300">Aucun commentaire pour cette activité.</p>
               </div>
-            )}
-          </>
-        )}
+            ))
+          ) : (
+            <div className="bg-gray-700 p-4 rounded-lg">
+              <p className="text-gray-300">
+                {selectedActivityId 
+                  ? "Aucun commentaire pour cette activité."
+                  : "Aucun commentaire disponible."
+                }
+              </p>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Modal de confirmation de suppression */}
