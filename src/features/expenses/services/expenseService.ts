@@ -1,4 +1,6 @@
-import { supabase } from "../../../supabase-client";
+
+// src/features/expenses/services/expenseService.ts
+import { apiClient } from "../../../lib/api-client";
 
 export interface Expense {
   id: string;
@@ -32,107 +34,73 @@ export interface ExpenseFormData {
 export const expenseService = {
   // Récupérer les dépenses d'un voyage
   async fetchExpenses(tripId: string): Promise<Expense[]> {
-    const { data, error } = await supabase
-      .from("expenses")
-      .select(`
-        *,
-        activities (
-          title
-        )
-      `)
-      .eq("trip_id", tripId)
-      .order("date", { ascending: false });
+    const expenses = await apiClient.get<Expense[]>(
+      'expenses',
+      { 
+        trip_id: `eq.${tripId}`,
+        order: 'date.desc'
+      },
+      '*,activities(title)'
+    );
       
-    if (error) {
-      throw new Error(error.message);
-    }
-    
-    return data || [];
+    return expenses || [];
   },
 
   // Récupérer les activités d'un voyage pour les dépenses
   async fetchActivities(tripId: string): Promise<Activity[]> {
     // D'abord, récupérer les destinations du voyage
-    const { data: destinations, error: destError } = await supabase
-      .from("destinations")
-      .select("id")
-      .eq("trip_id", tripId);
-
-    if (destError) {
-      throw new Error(destError.message);
-    }
+    const destinations = await apiClient.get<{id: string}[]>(
+      'destinations',
+      { trip_id: `eq.${tripId}` },
+      'id'
+    );
 
     if (!destinations?.length) {
       return [];
     }
 
     // Ensuite, récupérer toutes les activités des destinations
-    const destinationIds = destinations.map(dest => dest.id);
-    const { data, error } = await supabase
-      .from("activities")
-      .select("id, title, datetime")
-      .in("destination_id", destinationIds)
-      .order("datetime", { ascending: true });
+    const destinationIds = destinations.map(dest => dest.id).join(',');
+    const activities = await apiClient.get<Activity[]>(
+      'activities',
+      { 
+        destination_id: `in.(${destinationIds})`,
+        order: 'datetime.asc'
+      },
+      'id,title,datetime'
+    );
       
-    if (error) {
-      throw new Error(error.message);
-    }
-    
-    return data || [];
+    return activities || [];
   },
 
   // Récupérer une dépense spécifique
   async fetchExpense(expenseId: string): Promise<Expense> {
-    const { data, error } = await supabase
-      .from("expenses")
-      .select("*")
-      .eq("id", expenseId)
-      .single();
+    const expenses = await apiClient.get<Expense[]>(
+      'expenses',
+      { id: `eq.${expenseId}` }
+    );
     
-    if (error) {
-      throw new Error(error.message);
+    if (!expenses || expenses.length === 0) {
+      throw new Error('Dépense non trouvée');
     }
     
-    return data;
+    return expenses[0];
   },
 
   // Créer une nouvelle dépense
   async createExpense(data: ExpenseFormData): Promise<Expense> {
-    const { data: newExpense, error } = await supabase
-      .from("expenses")
-      .insert([data])
-      .select();
-    
-    if (error) {
-      throw new Error(error.message);
-    }
-    
-    return newExpense?.[0];
+    const result = await apiClient.post<Expense[]>('expenses', data);
+    return result[0];
   },
 
   // Mettre à jour une dépense existante
   async updateExpense(id: string, data: ExpenseFormData): Promise<Expense> {
-    const { error } = await supabase
-      .from("expenses")
-      .update(data)
-      .eq("id", id);
-    
-    if (error) {
-      throw new Error(error.message);
-    }
-    
-    return { ...data, id };
+    await apiClient.patch('expenses', data, { id: `eq.${id}` });
+    return { ...data, id } as Expense;
   },
 
   // Supprimer une dépense
   async deleteExpense(expenseId: string): Promise<void> {
-    const { error } = await supabase
-      .from("expenses")
-      .delete()
-      .eq("id", expenseId);
-    
-    if (error) {
-      throw new Error(error.message);
-    }
+    await apiClient.delete('expenses', { id: `eq.${expenseId}` });
   }
 };

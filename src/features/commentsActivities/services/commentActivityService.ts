@@ -1,4 +1,5 @@
-import { supabase } from "../../../supabase-client";
+// src/features/commentsActivities/services/commentActivityService.ts
+import { apiClient } from "../../../lib/api-client";
 
 export interface CommentActivity {
   id: number;
@@ -23,136 +24,94 @@ export interface CommentActivityFormData {
 export const commentActivityService = {
   // Récupérer les activités disponibles
   async fetchActivities(tripId: string): Promise<Activity[]> {
-    const { data: destinations, error: destError } = await supabase
-      .from("destinations")
-      .select("id")
-      .eq("trip_id", tripId);
+    // D'abord récupérer les destinations du voyage
+    const destinations = await apiClient.get<{id: string}[]>(
+      'destinations',
+      { trip_id: `eq.${tripId}` },
+      'id'
+    );
     
-    if (destError) {
-      throw new Error(destError.message);
-    }
-
     if (!destinations || destinations.length === 0) {
       return [];
     }
 
-    const destinationIds = destinations.map(dest => dest.id);
-
-    const { data, error } = await supabase
-      .from("activities")
-      .select("id, title")
-      .in("destination_id", destinationIds)
-      .order("datetime", { ascending: true });
+    const destinationIds = destinations.map(dest => dest.id).join(',');
+    const activities = await apiClient.get<Activity[]>(
+      'activities',
+      { 
+        destination_id: `in.(${destinationIds})`,
+        order: 'datetime.asc'
+      },
+      'id,title'
+    );
       
-    if (error) {
-      throw new Error(error.message);
-    }
-    
-    return data || [];
+    return activities || [];
   },
 
   // Récupérer les commentaires d'une activité
   async fetchComments(activityId: number): Promise<CommentActivity[]> {
-    const { data, error } = await supabase
-      .from("comments_activities")
-      .select("*")
-      .eq("activity_id", activityId)
-      .order("created_at", { ascending: false });
+    const comments = await apiClient.get<CommentActivity[]>(
+      'comments_activities',
+      { 
+        activity_id: `eq.${activityId}`,
+        order: 'created_at.desc'
+      }
+    );
 
-    if (error) {
-      throw new Error(error.message);
-    }
-
-    return data as CommentActivity[];
+    return comments as CommentActivity[];
   },
 
   // Créer un nouveau commentaire
   async createComment(data: CommentActivityFormData): Promise<CommentActivity> {
-    const { data: userData } = await supabase.auth.getUser();
-    const userId = userData.user?.id;
-
-    const { data: newComment, error } = await supabase
-      .from("comments_activities")
-      .insert([
-        { 
-          ...data,
-          user_id: userId
-        }
-      ])
-      .select()
-      .single();
-
-    if (error) {
-      throw new Error(error.message);
-    }
-
-    return newComment;
+    // Note: user_id sera automatiquement ajouté par RLS ou trigger
+    const result = await apiClient.post<CommentActivity[]>('comments_activities', data);
+    return result[0];
   },
 
   // Mettre à jour un commentaire existant
   async updateComment(id: number, data: Partial<CommentActivityFormData>): Promise<CommentActivity> {
-    const { data: updatedComment, error } = await supabase
-      .from("comments_activities")
-      .update(data)
-      .eq("id", id)
-      .select()
-      .single();
-
-    if (error) {
-      throw new Error(error.message);
-    }
-
-    return updatedComment;
+    const result = await apiClient.patch<CommentActivity[]>(
+      'comments_activities', 
+      data, 
+      { id: `eq.${id}` }
+    );
+    return result[0];
   },
 
   // Supprimer un commentaire
   async deleteComment(commentId: number): Promise<void> {
-    const { error } = await supabase
-      .from("comments_activities")
-      .delete()
-      .eq("id", commentId);
-    
-    if (error) {
-      throw new Error(error.message);
-    }
+    await apiClient.delete('comments_activities', { id: `eq.${commentId}` });
   },
 
   // Récupérer le profil utilisateur
   async fetchUserProfile(): Promise<string> {
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (user) {
-      // D'abord, vérifions le display_name dans la table users
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('display_name')
-        .eq('id', user.id)
-        .single();
+    try {
+      // Essayer d'abord la table users
+      const users = await apiClient.get<{display_name: string}[]>(
+        'users',
+        {},
+        'display_name'
+      );
 
-      if (!userError && userData?.display_name) {
-        return userData.display_name;
+      if (users && users.length > 0 && users[0].display_name) {
+        return users[0].display_name;
       }
 
-      // Si pas de display_name, on utilise le nom du provider
-      if (user.user_metadata && user.user_metadata.full_name) {
-        return user.user_metadata.full_name;
+      // Fallback vers la table profiles
+      const profiles = await apiClient.get<{full_name: string}[]>(
+        'profiles',
+        {},
+        'full_name'
+      );
+
+      if (profiles && profiles.length > 0 && profiles[0].full_name) {
+        return profiles[0].full_name;
       }
 
-      // En dernier recours, on vérifie dans la table profiles
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('full_name')
-        .eq('id', user.id)
-        .single();
-
-      if (error) {
-        console.error("Erreur lors de la récupération du profil:", error);
-        return user.email || "Utilisateur";
-      }
-      
-      return data?.full_name || user.email || "Utilisateur";
+      return "Utilisateur";
+    } catch (error) {
+      console.error("Erreur lors de la récupération du profil:", error);
+      return "Utilisateur";
     }
-    
-    return "Utilisateur";
   }
 };
