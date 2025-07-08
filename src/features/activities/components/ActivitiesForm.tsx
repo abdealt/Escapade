@@ -12,7 +12,7 @@ interface ActivityFormProps {
 }
 
 export const ActivityForm = ({ 
-  tripId, 
+  // tripId, // Commenté car non utilisé
   activity, 
   destinations, 
   onClose, 
@@ -25,7 +25,7 @@ export const ActivityForm = ({
     isEditMode,
     handleChange,
     handleSubmit,
-    setSubmitError
+    // setSubmitError // Commenté car non utilisé
   } = useActivityForm({
     activity,
     destinations,

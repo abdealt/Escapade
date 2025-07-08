@@ -49,7 +49,7 @@ export function CommentsList() {
   const {
     data: activityComments,
     isLoading,
-    isError,
+    // isError, // Commenté car non utilisé
     error: fetchError,
   } = useQuery<ActivityComment[], Error>({
     queryKey: ["activityComments", userId],

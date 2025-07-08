@@ -12,7 +12,7 @@ interface DestinationFormProps {
 }
 
 export const DestinationForm = ({ 
-  tripId, 
+  // tripId, // Commenté car non utilisé
   destination, 
   trip, 
   onClose, 
@@ -27,7 +27,7 @@ export const DestinationForm = ({
     maxDate,
     handleChange,
     handleSubmit,
-    setSubmitError
+    // setSubmitError // Commenté car non utilisé
   } = useDestinationForm({
     destination,
     trip,

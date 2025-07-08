@@ -25,7 +25,7 @@ export const ExpenseForm = ({
     isEditMode,
     handleChange,
     handleSubmit,
-    setSubmitError
+    // setSubmitError // Commenté car non utilisé
   } = useExpenseForm({
     tripId,
     expenseId,
