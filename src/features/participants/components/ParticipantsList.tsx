@@ -1,61 +1,27 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+// src/features/participants/components/ParticipantsList.tsx
 import { useState } from "react";
 import { FaTrash } from "react-icons/fa";
 import { HiUser } from "react-icons/hi";
-import { supabase } from "../../../supabase-client";
-
-interface Participant {
-  id: string;
-  trip_id: string;
-  user_id: string;
-  joined_at: string;
-  user: {
-    display_name: string;
-  };
-}
+import { useDeleteParticipant, useParticipants } from '../hooks/useParticipants';
 
 interface ParticipantsListProps {
   tripId: string;
 }
 
-const fetchParticipants = async (tripId: string): Promise<Participant[]> => {
-  const { data, error } = await supabase
-    .from("trip_participants")
-    .select(`*, user:users (display_name)`)
-    .eq("trip_id", tripId)
-    .order('joined_at', { ascending: true });
-
-  if (error) throw error;
-  return data || [];
-};
-
-const deleteParticipant = async (participantId: string) => {
-  const { error } = await supabase
-    .from("trip_participants")
-    .delete()
-    .eq("id", participantId);
-
-  if (error) throw error;
-};
-
 export const ParticipantsList = ({ tripId }: ParticipantsListProps) => {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [participantToDelete, setParticipantToDelete] = useState<string | null>(null);
-  const queryClient = useQueryClient();
 
-  const { data: participants, isLoading, error } = useQuery({
-    queryKey: ["participants", tripId],
-    queryFn: () => fetchParticipants(tripId)
-  });
+  const { data: participants, isLoading, error } = useParticipants(tripId);
+  const deleteParticipantMutation = useDeleteParticipant(tripId);
 
   const handleDelete = async (id: string) => {
     try {
-      await deleteParticipant(id);
-      queryClient.invalidateQueries({ queryKey: ["participants", tripId] });
+      await deleteParticipantMutation.mutateAsync(id);
       setDeleteModalOpen(false);
       setParticipantToDelete(null);
     } catch (error) {
-      console.error("Erreur lors de la suppression:", error);
+      // L'erreur est déjà gérée dans le hook
     }
   };
 
@@ -104,6 +70,7 @@ export const ParticipantsList = ({ tripId }: ParticipantsListProps) => {
                 <button
                   onClick={() => openDeleteModal(participant.id)}
                   className="p-1.5 bg-red-500 rounded hover:bg-red-600 transition"
+                  disabled={deleteParticipantMutation.isPending}
                 >
                   <FaTrash className="text-white" />
                 </button>
@@ -128,14 +95,16 @@ export const ParticipantsList = ({ tripId }: ParticipantsListProps) => {
               <button
                 onClick={() => setDeleteModalOpen(false)}
                 className="px-4 py-2 bg-gray-600 rounded hover:bg-gray-700"
+                disabled={deleteParticipantMutation.isPending}
               >
                 Annuler
               </button>
               <button
                 onClick={() => participantToDelete && handleDelete(participantToDelete)}
                 className="px-4 py-2 bg-red-600 rounded hover:bg-red-700"
+                disabled={deleteParticipantMutation.isPending}
               >
-                Retirer
+                {deleteParticipantMutation.isPending ? 'Suppression...' : 'Retirer'}
               </button>
             </div>
           </div>
