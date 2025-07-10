@@ -1,159 +1,48 @@
-import { useQuery } from "@tanstack/react-query";
+// src/features/trips/components/TripDetails.tsx
 import { useState } from "react";
 import { FaArrowLeft, FaEdit, FaTrash } from "react-icons/fa";
 import { FcInvite } from "react-icons/fc";
 import { useNavigate, useParams } from "react-router";
-import { supabase } from "../../../supabase-client";
 import { ActivitiesList } from "../../activities/components/ActivitiesList";
 import { CommentsActivitiesList } from "../../commentsActivities/components/CommentActivitiesList";
 import { DestinationsList } from "../../destinations/components/DestinationList";
 import { ExpensesList } from "../../expenses/components/ExpensesList";
 import { ParticipantsList } from "../../participants/components/ParticipantsList";
-
-interface Trip {
-  id: string;
-  name: string;
-  description: string;
-  start_date: string;
-  end_date: string;
-  created_at: string;
-  created_email: string;
-  creator: {
-    display_name: string;
-  }
-}
-
-interface Friend {
-  id: string;
-  email?: string; // L'email peut être optionnelle si non disponible
-  display_name: string;
-}
-
-interface FriendRequest {
-  id: string;
-  requester_id: string;
-  receiver_id: string;
-  status: string;
-  requester?: { id: string; email: string ; display_name: string };
-  receiver?: { id: string; email: string ; display_name: string};
-}
-
-// Fonction pour récupérer les détails d'un voyage
-const fetchTripDetails = async (tripId: string): Promise<Trip | null> => {
-  // Première requête pour obtenir les détails du voyage
-  const { data: tripData, error: tripError } = await supabase
-    .from("trips")
-    .select('*')
-    .eq("id", tripId)
-    .single();
-
-  if (tripError) throw tripError;
-  if (!tripData) return null;
-
-  // Deuxième requête pour obtenir les informations du créateur
-  const { data: userData, error: userError } = await supabase
-    .from("users")
-    .select('display_name')
-    .eq("id", tripData.created_by) // Utiliser created_by au lieu de created_at
-    .single();
-
-  if (userError) throw userError;
-
-  // Combiner les résultats
-  return {
-    ...tripData,
-    creator: userData || { display_name: tripData.created_email }
-  };
-};
+import { useCurrentUser, useDeleteTrip, useFriends, useShareTrip, useTripDetails } from '../hooks/useTrips';
 
 export const TripDetails = () => {
   const { tripId } = useParams<{ tripId: string }>();
   const navigate = useNavigate();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
-  const [friends, setFriends] = useState<Friend[]>([]);
   const [selectedFriendId, setSelectedFriendId] = useState('');
   const [activeTab, setActiveTab] = useState<'info' | 'destinations' | 'activities' | 'expenses' | 'comments' | 'participants'>('info');
 
-  const { data: trip, error, isLoading } = useQuery<Trip | null, Error>({
-    queryKey: ["trip", tripId],
-    queryFn: () => fetchTripDetails(tripId!),
-    enabled: !!tripId
-  });
+  const { userId } = useCurrentUser();
+  const { data: trip, error, isLoading } = useTripDetails(tripId);
+  const { data: friends = [] } = useFriends(userId);
+  const deleteTripMutation = useDeleteTrip();
+  const shareTrip = useShareTrip();
 
-  const loadFriends = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    const { data: friendRequests, error } = await supabase
-      .from('friend_requests')      .select(`
-        *,
-        requester:users!friend_requests_requester_id_fkey (
-          id,
-          display_name
-        ),
-        receiver:users!friend_requests_receiver_id_fkey (
-          id,
-          display_name
-        )
-      `)
-      .eq('status', 'accepted')
-      .or(`requester_id.eq.${user.id},receiver_id.eq.${user.id}`);
-
-    if (error) {
-      console.error('Erreur lors du chargement des amis:', error);
-      return;
+  const handleDelete = async () => {
+    try {
+      await deleteTripMutation.mutateAsync(tripId!);
+      setShowDeleteModal(false);
+      navigate("/my-trips");
+    } catch (error) {
+      // L'erreur est déjà gérée dans le hook
     }
-
-    // Transformer les demandes d'amis en liste d'amis
-    const friendsList = friendRequests.map((request: FriendRequest) => {
-      const isSender = request.requester_id === user.id;
-      const friendData = isSender ? request.receiver : request.requester;      return {
-        id: isSender ? request.receiver_id : request.requester_id,
-        display_name: friendData?.display_name || friendData?.email || "Ami sans nom",
-      };
-    });
-
-    setFriends(friendsList);
   };
 
-  const handleShare = async (userId: string) => {
+  const handleShare = async (selectedUserId: string) => {
     try {
-      // Vérifier si l'utilisateur est déjà participant
-      const { data: existingParticipant, error: checkError } = await supabase
-        .from('trip_participants')
-        .select('id')
-        .eq('trip_id', tripId)
-        .eq('user_id', userId)
-        .single();
-
-      if (checkError && checkError.code !== 'PGRST116') {
-        throw checkError;
-      }
-
-      if (existingParticipant) {
-        alert("Cette personne participe déjà à ce voyage.");
-        return;
-      }
-
-      // Ajouter le nouveau participant
-      const { error: insertError } = await supabase
-        .from('trip_participants')
-        .insert([
-          {
-            trip_id: tripId,
-            user_id: userId
-          }
-        ]);
-
-      if (insertError) throw insertError;
-
+      await shareTrip.mutateAsync({ tripId: tripId!, userId: selectedUserId });
       alert("Le voyage a été partagé avec succès !");
       setShowShareModal(false);
       setSelectedFriendId('');
     } catch (error) {
-      console.error('Erreur lors du partage:', error);
-      alert("Une erreur est survenue lors du partage du voyage.");
+      const errorMessage = error instanceof Error ? error.message : "Une erreur est survenue lors du partage du voyage.";
+      alert(errorMessage);
     }
   };
 
@@ -182,16 +71,6 @@ export const TripDetails = () => {
       </div>
     );
   }
-
-  const handleDelete = async () => {
-    try {
-      await supabase.from("trips").delete().eq("id", tripId);
-      setShowDeleteModal(false);
-      navigate("/my-trips");
-    } catch (err) {
-      console.error("Erreur lors de la suppression:", err);
-    }
-  };
 
   // Formatage des dates pour l'affichage
   const formatDate = (dateString: string | Date) => {
@@ -227,10 +106,7 @@ export const TripDetails = () => {
             <button 
               className="p-2 bg-green-500 rounded-full hover:bg-green-600 transition"
               title="Ajouter un ami"
-              onClick={async () => {
-                await loadFriends();
-                setShowShareModal(true);
-              }}
+              onClick={() => setShowShareModal(true)}
             >
               <FcInvite className="text-white" />
             </button>
@@ -379,11 +255,8 @@ export const TripDetails = () => {
               </div>
             </div>
           )}
-          
         </div>
       </div>
-
-      
 
       {/* Modal de confirmation de suppression */}
       {showDeleteModal && (
@@ -395,14 +268,16 @@ export const TripDetails = () => {
               <button 
                 onClick={() => setShowDeleteModal(false)} 
                 className="px-4 py-2 bg-gray-600 rounded hover:bg-gray-700"
+                disabled={deleteTripMutation.isPending}
               >
                 Annuler
               </button>
               <button 
                 onClick={handleDelete} 
                 className="px-4 py-2 bg-red-600 rounded hover:bg-red-700"
+                disabled={deleteTripMutation.isPending}
               >
-                Supprimer
+                {deleteTripMutation.isPending ? 'Suppression...' : 'Supprimer'}
               </button>
             </div>
           </div>
@@ -422,7 +297,8 @@ export const TripDetails = () => {
             >
               <option value="">Sélectionner un ami</option>
               {friends.map((friend) => (
-                <option key={friend.id} value={friend.id}>                  {friend.display_name}
+                <option key={friend.id} value={friend.id}>
+                  {friend.display_name}
                 </option>
               ))}
             </select>
@@ -433,6 +309,7 @@ export const TripDetails = () => {
                   setSelectedFriendId('');
                 }} 
                 className="px-4 py-2 bg-gray-600 rounded hover:bg-gray-700"
+                disabled={shareTrip.isPending}
               >
                 Annuler
               </button>
@@ -443,9 +320,9 @@ export const TripDetails = () => {
                   }
                 }} 
                 className="px-4 py-2 bg-blue-600 rounded hover:bg-blue-700"
-                disabled={!selectedFriendId}
+                disabled={!selectedFriendId || shareTrip.isPending}
               >
-                Partager
+                {shareTrip.isPending ? 'Partage...' : 'Partager'}
               </button>
             </div>
           </div>

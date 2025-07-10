@@ -1,27 +1,9 @@
-import { useMutation } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
-import { supabase } from "../../../supabase-client";
-
-// Trip model avec created_email
-interface Trip {
-    name: string;
-    description: string;
-    start_date: Date;
-    end_date: Date;
-    created_email: string;
-}
+// src/features/trips/components/TripForm.tsx
+import { useState } from "react";
+import { useCreateTrip, useCurrentUser } from '../hooks/useTrips';
 
 interface CreateTripProps {
     onSuccess?: () => void;
-}
-
-const createTrip = async (trip: Trip) => {
-    // Ensure the trip object has the correct structure
-    const {data, error} = await supabase.from("trips").insert(trip)
-    if (error) {
-        throw new Error(error.message);
-    }
-    return data;
 }
 
 export const CreateTrip = ({ onSuccess }: CreateTripProps) => {
@@ -29,31 +11,11 @@ export const CreateTrip = ({ onSuccess }: CreateTripProps) => {
     const [tripDescription, setTripDescription] = useState<string>("");
     const [tripStartDate, setTripStartDate] = useState<Date>(new Date());
     const [tripEndDate, setTripEndDate] = useState<Date>(new Date());
-    const [userEmail, setUserEmail] = useState<string>("");
+    
+    const { userEmail } = useCurrentUser();
+    const createTripMutation = useCreateTrip();
 
-    // Récupérer l'email de l'utilisateur connecté au chargement du composant
-    useEffect(() => {
-        const fetchUserEmail = async () => {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (user) {
-                setUserEmail(user.email || "");
-            }
-        };
-        
-        fetchUserEmail();
-    }, []);
-
-    const { mutate } = useMutation({
-        mutationFn: createTrip,
-        onSuccess: () => {
-            // Appeler le callback onSuccess après une insertion réussie
-            if (onSuccess) {
-                onSuccess();
-            }
-        }
-    });
-
-    const handleSubmit = (event: React.FormEvent) => {
+    const handleSubmit = async (event: React.FormEvent) => {
         event.preventDefault();
         
         // Vérifier que l'email a bien été récupéré
@@ -62,13 +24,22 @@ export const CreateTrip = ({ onSuccess }: CreateTripProps) => {
             return;
         }
         
-        mutate({
-            name: tripName,
-            description: tripDescription,
-            start_date: tripStartDate,
-            end_date: tripEndDate,
-            created_email: userEmail, // Ajouter l'email à l'objet trip
-        });
+        try {
+            await createTripMutation.mutateAsync({
+                name: tripName,
+                description: tripDescription,
+                start_date: tripStartDate,
+                end_date: tripEndDate,
+                created_email: userEmail,
+            });
+            
+            // Appeler le callback onSuccess après une insertion réussie
+            if (onSuccess) {
+                onSuccess();
+            }
+        } catch (error) {
+            // L'erreur est déjà gérée dans le hook
+        }
     };
 
     return (
@@ -126,10 +97,18 @@ export const CreateTrip = ({ onSuccess }: CreateTripProps) => {
                 </div>
 
                 <div className="flex gap-4">
-                    <button type="submit" className="flex-1 bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600 transition duration-200">
-                        Créer le voyage
+                    <button 
+                        type="submit" 
+                        className="flex-1 bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600 transition duration-200"
+                        disabled={createTripMutation.isPending}
+                    >
+                        {createTripMutation.isPending ? 'Création...' : 'Créer le voyage'}
                     </button>
-                    <button type="reset" className="flex-1 bg-gray-500 text-white py-2 px-4 rounded-md hover:bg-gray-600 transition duration-200">
+                    <button 
+                        type="reset" 
+                        className="flex-1 bg-gray-500 text-white py-2 px-4 rounded-md hover:bg-gray-600 transition duration-200"
+                        disabled={createTripMutation.isPending}
+                    >
                         Annuler
                     </button>
                 </div>

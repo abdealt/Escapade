@@ -1,7 +1,7 @@
-import { useQuery } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+// src/features/trips/components/ShowTrips.tsx
+import { useState } from "react";
 import { FaCalendar, FaCalendarAlt } from "react-icons/fa";
-import { supabase } from "../../../supabase-client";
+import { useCurrentUser, useTrips } from '../hooks/useTrips';
 import { TripItem } from "./TripItem";
 
 // Trip model
@@ -15,48 +15,15 @@ export interface Trip {
     created_at: Date;
 }
 
-const fetchTrips = async (userId: string, showAll: boolean = false): Promise<Trip[]> => {
-    const query = supabase
-        .from("trips")
-        .select("*")
-        .eq("created_by", userId)
-        .order('end_date', { ascending: true });
-
-    if (!showAll) {
-        const today = new Date().toISOString();
-        query
-            .lte('start_date', today)
-    }
-
-    const { data, error } = await query;
-        
-    if (error) {
-        throw new Error(error.message);
-    }
-    return data as Trip[];
-}
-
 export const ShowTrips = () => {
-    const [userId, setUserId] = useState<string | null>(null);
+    const { userId } = useCurrentUser();
     const [showAllTrips, setShowAllTrips] = useState(false);
-
-    useEffect(() => {
-        const getUser = async () => {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (user) setUserId(user.id);
-        };
-        getUser();
-    }, []);
-
-    const { data, error, isLoading } = useQuery<Trip[], Error>({
-        queryKey: ["trips", userId, showAllTrips],
-        queryFn: () => fetchTrips(userId!, showAllTrips),
-        enabled: !!userId,
-    });
+    const { data, error, isLoading } = useTrips(userId, showAllTrips);
 
     if (isLoading) {
         return <div>Loading...</div>;
     }
+    
     if (error) {
         return <div>Error: {error.message}</div>;
     }
