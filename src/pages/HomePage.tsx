@@ -5,23 +5,17 @@ import { FaChevronDown, FaChevronUp, FaEye, FaPlane, FaPlus } from "react-icons/
 import { MdLocationOn, MdTrendingUp } from "react-icons/md";
 import { Link } from "react-router";
 import { SharedTrips } from "../features/sharedTrips/components/SharedTrips";
+import { useSharedTrips } from "../features/sharedTrips/hooks/useSharedTrips";
 import { ShowTrips } from "../features/trips/components/ShowTrips";
 import { CreateTrip } from "../features/trips/components/TripForm";
-import { supabase } from "../supabase-client";
+import { useCurrentUser } from "../features/trips/hooks/useTrips";
+import { apiClient } from "../lib/api-client";
 
 interface TripStats {
   totalTrips: number;
   upcomingTrips: number;
   totalDestinations: number;
   totalExpenses: number;
-}
-
-interface SupabaseTrip {
-  id: string;
-  name: string;
-  start_date: string;
-  destinations: { city: string }[] | { city: string };
-  trip_participants: { count?: number }[] | { count?: number };
 }
 
 interface UpcomingTrip {
@@ -32,11 +26,34 @@ interface UpcomingTrip {
   participants: number;
 }
 
+interface TripWithDestinations {
+  id: string;
+  name: string;
+  start_date: string;
+}
+
+interface Destination {
+  city: string;
+  trip_id: string;
+}
+
+interface Expense {
+  amount: number;
+  trip_id: string;
+}
+
+interface TripParticipant {
+  trip_id: string;
+}
+
 export const Home = () => {
   const [showTripModal, setShowTripModal] = useState(false);
   const [collapseMine, setCollapseMine] = useState(false);
   const [collapseShared, setCollapseShared] = useState(false);
   const queryClient = useQueryClient();
+
+  const { userId } = useCurrentUser();
+  const { data: sharedTripsData } = useSharedTrips(userId);
 
   const openModal = () => setShowTripModal(true);
   
@@ -44,80 +61,137 @@ export const Home = () => {
     setShowTripModal(false);
     // Invalider les requêtes pour forcer le rafraîchissement
     queryClient.invalidateQueries({ queryKey: ['trips'] });
-    queryClient.invalidateQueries({ queryKey: ['shared-trips'] });
+    queryClient.invalidateQueries({ queryKey: ['sharedTrips'] });
     queryClient.invalidateQueries({ queryKey: ['trip-stats'] });
     queryClient.invalidateQueries({ queryKey: ['upcoming-trips'] });
   };
 
-  // Statistiques
+  // Statistiques utilisant l'API client existant
   const { data: stats } = useQuery<TripStats>({
-    queryKey: ['trip-stats'],
+    queryKey: ['trip-stats', userId],
     queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('User not found');
+      if (!userId) throw new Error('User not authenticated');
 
-      const [tripsResult, expensesResult, destinationsResult] = await Promise.all([
-        supabase.from('trips').select('*').eq('created_by', user.id),
-        supabase
-          .from('expenses')
-          .select('amount')
-          .in('trip_id', 
-            (await supabase.from('trips').select('id').eq('created_by', user.id)).data?.map(t => t.id) || []
-          ),
-        supabase
-          .from('destinations')
-          .select('city', { count: 'exact' })
-          .in('trip_id', 
-            (await supabase.from('trips').select('id').eq('created_by', user.id)).data?.map(t => t.id) || []
-          )
-      ]);
+      // Récupérer tous les voyages de l'utilisateur
+      const trips = await apiClient.get<TripWithDestinations[]>(
+        'trips',
+        { 
+          created_by: `eq.${userId}`,
+          order: 'created_at.desc'
+        },
+        'id,name,start_date'
+      );
 
+      if (!trips || trips.length === 0) {
+        return {
+          totalTrips: 0,
+          upcomingTrips: 0,
+          totalDestinations: 0,
+          totalExpenses: 0
+        };
+      }
+
+      const tripIds = trips.map(trip => trip.id);
       const now = new Date();
+
+      // Récupérer les destinations pour ces voyages
+      const destinations = await apiClient.get<Destination[]>(
+        'destinations',
+        { trip_id: `in.(${tripIds.join(',')})` },
+        'city,trip_id'
+      );
+
+      // Récupérer les dépenses pour ces voyages
+      const expenses = await apiClient.get<Expense[]>(
+        'expenses',
+        { trip_id: `in.(${tripIds.join(',')})` },
+        'amount,trip_id'
+      );
+
       return {
-        totalTrips: tripsResult.data?.length || 0,
-        upcomingTrips: tripsResult.data?.filter(trip => new Date(trip.start_date) > now).length || 0,
-        totalDestinations: destinationsResult.count || 0,
-        totalExpenses: expensesResult.data?.reduce((sum, exp) => sum + (exp.amount || 0), 0) || 0
+        totalTrips: trips.length,
+        upcomingTrips: trips.filter(trip => new Date(trip.start_date) > now).length,
+        totalDestinations: destinations ? destinations.length : 0,
+        totalExpenses: expenses ? expenses.reduce((sum, exp) => sum + (exp.amount || 0), 0) : 0
       };
-    }
+    },
+    enabled: !!userId
   });
 
-  // Prochains voyages
+  // Prochains voyages utilisant l'API client existant
   const { data: upcomingTrips } = useQuery<UpcomingTrip[]>({
-    queryKey: ['upcoming-trips'],
+    queryKey: ['upcoming-trips', userId],
     queryFn: async (): Promise<UpcomingTrip[]> => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return [];
+      if (!userId) return [];
 
-      const { data } = await supabase
-        .from('trips')
-        .select(`
-          id,
-          name,
-          start_date,
-          destinations (city),
-          trip_participants (count)
-        `)
-        .eq('created_by', user.id)
-        .gt('start_date', new Date().toISOString())
-        .order('start_date')
-        .limit(3) as { data: SupabaseTrip[] | null };
+      const now = new Date().toISOString();
+      
+      // Récupérer les voyages à venir
+      const trips = await apiClient.get<TripWithDestinations[]>(
+        'trips',
+        { 
+          created_by: `eq.${userId}`,
+          start_date: `gt.${now}`,
+          order: 'start_date.asc',
+          limit: '3'
+        },
+        'id,name,start_date'
+      );
 
-      if (!data) return [];
+      if (!trips || trips.length === 0) return [];
 
-      return data.map(trip => ({
+      const tripIds = trips.map(trip => trip.id);
+
+      // Récupérer les destinations pour ces voyages
+      const destinations = await apiClient.get<Destination[]>(
+        'destinations',
+        { trip_id: `in.(${tripIds.join(',')})` },
+        'city,trip_id'
+      );
+
+      // Récupérer les participants pour ces voyages
+      const participants = await apiClient.get<TripParticipant[]>(
+        'trip_participants',
+        { trip_id: `in.(${tripIds.join(',')})` },
+        'trip_id'
+      );
+
+      // Créer un map des destinations par voyage
+      const destinationsByTrip = new Map<string, string>();
+      destinations?.forEach(dest => {
+        if (!destinationsByTrip.has(dest.trip_id)) {
+          destinationsByTrip.set(dest.trip_id, dest.city);
+        }
+      });
+
+      // Créer un map du nombre de participants par voyage
+      const participantsByTrip = new Map<string, number>();
+      participants?.forEach(participant => {
+        const currentCount = participantsByTrip.get(participant.trip_id) || 0;
+        participantsByTrip.set(participant.trip_id, currentCount + 1);
+      });
+
+      return trips.map(trip => ({
         id: trip.id,
         name: trip.name,
         start_date: trip.start_date,
-        city: Array.isArray(trip.destinations) 
-          ? trip.destinations[0]?.city || 'Aucune destination saisie'
-          : (trip.destinations as { city: string })?.city || 'Aucune destination saisie',
-        participants: Array.isArray(trip.trip_participants) 
-          ? trip.trip_participants.length 
-          : (trip.trip_participants as { count?: number })?.count || 0
+        city: destinationsByTrip.get(trip.id) || 'Aucune destination saisie',
+        participants: participantsByTrip.get(trip.id) || 0
       }));
-    }
+    },
+    enabled: !!userId
   });
+
+  if (!userId) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">Chargement...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen text-gray-900 px-4 sm:px-6 lg:px-8 py-8">
@@ -180,7 +254,7 @@ export const Home = () => {
             Prochains départs
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {Array.isArray(upcomingTrips) && upcomingTrips.map(trip => {
+            {upcomingTrips.map(trip => {
               const daysUntil = Math.ceil(
                 (new Date(trip.start_date).getTime() - new Date().getTime()) / (1000 * 3600 * 24)
               );
@@ -249,7 +323,7 @@ export const Home = () => {
         {/* Card: Voyages en compagnie */}
         <div className="bg-gray-800 rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold text-white">Les voyages collaboratif</h2>
+            <h2 className="text-xl font-semibold text-white">Les voyages collaboratifs</h2>
             <button 
               onClick={() => setCollapseShared(prev => !prev)} 
               title={collapseShared ? "Développer" : "Réduire"} 
