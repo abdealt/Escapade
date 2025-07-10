@@ -24,7 +24,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             // Si un utilisateur vient de se connecter via OAuth, rediriger vers la page mémorisée
             if (session?.user && window.location.href.includes('access_token')) {
                 const redirectPath = localStorage.getItem('redirectAfterLogin') || '/';
-                localStorage.removeItem('redirectAfterLogin'); // Nettoyer après utilisation
+                localStorage.removeItem('redirectAfterLogin');
                 window.location.href = redirectPath;
             }
         });
@@ -57,6 +57,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                         access_type: 'offline',
                         prompt: 'consent',
                     },
+                    // CORRECTION: Utiliser window.location.origin au lieu d'une URL hardcodée
                     redirectTo: `${window.location.origin}`,
                 }
             });
@@ -65,27 +66,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             throw error;
         }
     }
-
-    useEffect(() => {
-        // Écouter les changements d'état d'authentification
-        const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
-            setUser(session?.user ?? null);
-            
-            // Si un utilisateur vient de se connecter, rediriger si nécessaire
-            if (event === 'SIGNED_IN' && session?.user) {
-                const redirectPath = localStorage.getItem('redirectAfterLogin');
-                if (redirectPath) {
-                    localStorage.removeItem('redirectAfterLogin');
-                    window.location.href = redirectPath;
-                }
-            }
-        });
-
-        // Nettoyage
-        return () => {
-            listener?.subscription.unsubscribe();
-        };
-    }, []);
 
     const signInWithEmail = async (email: string, password: string) => {
         const { error } = await supabase.auth.signInWithPassword({
