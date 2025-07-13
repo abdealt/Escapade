@@ -5,7 +5,7 @@ import { FaChevronDown, FaChevronUp, FaEye, FaPlane, FaPlus } from "react-icons/
 import { MdLocationOn, MdTrendingUp } from "react-icons/md";
 import { Link } from "react-router";
 import { SharedTrips } from "../features/sharedTrips/components/SharedTrips";
-import { useSharedTrips } from "../features/sharedTrips/hooks/useSharedTrips";
+//import { useSharedTrips } from "../features/sharedTrips/hooks/useSharedTrips";
 import { ShowTrips } from "../features/trips/components/ShowTrips";
 import { CreateTrip } from "../features/trips/components/TripForm";
 import { useCurrentUser } from "../features/trips/hooks/useTrips";
@@ -53,7 +53,7 @@ export const Home = () => {
   const queryClient = useQueryClient();
 
   const { userId } = useCurrentUser();
-  const { data: sharedTripsData } = useSharedTrips(userId);
+  //const { data: sharedTripsData } = useSharedTrips(userId);
 
   const openModal = () => setShowTripModal(true);
   
