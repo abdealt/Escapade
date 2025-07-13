@@ -1,4 +1,4 @@
-// src/context/AuthContext.tsx - Correction de la redirection OAuth
+// src/context/AuthContext.tsx - Version corrigée pour Netlify
 
 import { User } from '@supabase/supabase-js';
 import { createContext, useContext, useEffect, useState } from 'react';
@@ -26,8 +26,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             if (session?.user && window.location.href.includes('access_token')) {
                 const redirectPath = localStorage.getItem('redirectAfterLogin') || '/';
                 localStorage.removeItem('redirectAfterLogin');
-                // Nettoyer l'URL des paramètres OAuth
-                window.history.replaceState({}, document.title, redirectPath);
+                // Nettoyer l'URL des paramètres OAuth et rediriger
+                window.history.replaceState({}, document.title, window.location.origin + redirectPath);
             }
         });
 
@@ -41,7 +41,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 if (redirectPath) {
                     localStorage.removeItem('redirectAfterLogin');
                     // Nettoyer l'URL et rediriger
-                    window.history.replaceState({}, document.title, redirectPath);
+                    window.history.replaceState({}, document.title, window.location.origin + redirectPath);
                 }
             }
         })
@@ -53,27 +53,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     const signInWithGoogle = async () => {
         try {
-            // Déterminer l'URL de redirection en fonction de l'environnement
-            const getRedirectUrl = () => {
-                if (typeof window !== 'undefined') {
-                    // En production, utiliser l'URL actuelle du site
-                    if (window.location.hostname !== 'localhost') {
-                        return window.location.origin;
-                    }
-                    // En développement, utiliser localhost
-                    return 'http://localhost:5173';
-                }
-                return 'https://escapadev1.netlify.app';
-            };
-
+            // Avec l'OAuth intégré Supabase, pas besoin de spécifier redirectTo
+            // Supabase utilisera automatiquement la Site URL configurée
             await supabase.auth.signInWithOAuth({
                 provider: 'google',
                 options: {
                     queryParams: {
                         access_type: 'offline',
                         prompt: 'consent',
-                    },
-                    redirectTo: getRedirectUrl(),
+                    }
                 }
             });
         } catch (error: any) {
