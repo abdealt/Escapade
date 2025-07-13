@@ -1,4 +1,5 @@
-// src/context/AuthContext.tsx
+// src/context/AuthContext.tsx - Correction de la redirection OAuth
+
 import { User } from '@supabase/supabase-js';
 import { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '../supabase-client';
@@ -25,7 +26,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             if (session?.user && window.location.href.includes('access_token')) {
                 const redirectPath = localStorage.getItem('redirectAfterLogin') || '/';
                 localStorage.removeItem('redirectAfterLogin');
-                window.location.href = redirectPath;
+                // Nettoyer l'URL des paramètres OAuth
+                window.history.replaceState({}, document.title, redirectPath);
             }
         });
 
@@ -38,7 +40,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 const redirectPath = localStorage.getItem('redirectAfterLogin');
                 if (redirectPath) {
                     localStorage.removeItem('redirectAfterLogin');
-                    window.location.href = redirectPath;
+                    // Nettoyer l'URL et rediriger
+                    window.history.replaceState({}, document.title, redirectPath);
                 }
             }
         })
@@ -50,6 +53,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     const signInWithGoogle = async () => {
         try {
+            // Déterminer l'URL de redirection en fonction de l'environnement
+            const getRedirectUrl = () => {
+                if (typeof window !== 'undefined') {
+                    // En production, utiliser l'URL actuelle du site
+                    if (window.location.hostname !== 'localhost') {
+                        return window.location.origin;
+                    }
+                    // En développement, utiliser localhost
+                    return 'http://localhost:5173';
+                }
+                return 'https://escapadev1.netlify.app';
+            };
+
             await supabase.auth.signInWithOAuth({
                 provider: 'google',
                 options: {
@@ -57,8 +73,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                         access_type: 'offline',
                         prompt: 'consent',
                     },
-                    // CORRECTION: Utiliser window.location.origin au lieu d'une URL hardcodée
-                    redirectTo: `${window.location.origin}`,
+                    redirectTo: getRedirectUrl(),
                 }
             });
         } catch (error: any) {
