@@ -91,26 +91,32 @@ export class TripsService {
   }
 
   static async loadFriends(userId: string): Promise<Friend[]> {
-    const friendRequests = await apiClient.get<FriendRequest[]>(
-      'friend_requests',
-      { 
-        status: 'eq.accepted',
-        or: `(requester_id.eq.${userId},receiver_id.eq.${userId})`
-      },
-      `*,
-       requester:users!friend_requests_requester_id_fkey (id, display_name),
-       receiver:users!friend_requests_receiver_id_fkey (id, display_name)`
-    );
+    try {
+      const [sentRequests, receivedRequests] = await Promise.all([
+        apiClient.get<FriendRequest[]>('friend_requests', 
+          { status: 'eq.accepted', requester_id: `eq.${userId}` },
+          '*, receiver:users!friend_requests_receiver_id_fkey (id, display_name, email)'
+        ),
+        apiClient.get<FriendRequest[]>('friend_requests',
+          { status: 'eq.accepted', receiver_id: `eq.${userId}` },
+          '*, requester:users!friend_requests_requester_id_fkey (id, display_name, email)'
+        )
+      ]);
 
-    // Transformer les demandes d'amis en liste d'amis
-    return friendRequests.map((request: FriendRequest) => {
-      const isSender = request.requester_id === userId;
-      const friendData = isSender ? request.receiver : request.requester;
-      return {
-        id: isSender ? request.receiver_id : request.requester_id,
-        display_name: friendData?.display_name || friendData?.email || "Ami sans nom",
-      };
-    });
+      return [
+        ...sentRequests.map(req => ({
+          id: req.receiver_id,
+          display_name: req.receiver?.display_name || req.receiver?.email || "Ami sans nom"
+        })),
+        ...receivedRequests.map(req => ({
+          id: req.requester_id,
+          display_name: req.requester?.display_name || req.requester?.email || "Ami sans nom"
+        }))
+      ];
+    } catch (error) {
+      console.error('Erreur lors du chargement des amis:', error);
+      return [];
+    }
   }
 
   static async shareTrip(tripId: string, userId: string): Promise<void> {
